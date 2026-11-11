@@ -1,6 +1,6 @@
 #include "controller/jump_controller.h"
 
-#include "controller/controller_log.h"
+#include <stacklog/stacklog.h>
 #include "controller/error_text.h"
 
 #include <algorithm>
@@ -92,8 +92,8 @@ void JumpController::jumpBy(int delta)
     }
 
     const model::CommandResult result = m_model->startJump(target);
-    qCDebug(lcController) << "jump command delta=" << delta << "target=" << target
-                          << "result=" << model::commandResultName(result);
+    STACKLOG_DEBUG() << "jump command delta=" << delta << " target=" << target
+                     << " result=" << model::commandResultName(result);
     if (model::failed(result) && m_messages != nullptr)
     {
         m_messages->showMessage(commandResultText(result), 4000);
@@ -104,14 +104,14 @@ void JumpController::onJumpStarted(const shared::JumpInfo& info)
 {
     if (!m_factory)
     {
-        qCWarning(lcController) << "jump progress factory unavailable";
+        STACKLOG_WARN() << "jump progress factory unavailable";
         return;
     }
 
     m_progress = m_factory();
     if (!m_progress)
     {
-        qCWarning(lcController) << "jump progress view unavailable; jump runs without cancel UI";
+        STACKLOG_WARN() << "jump progress view unavailable; jump runs without cancel UI";
         return;
     }
     m_progress->setCancelHandler([this] { m_model->cancelJump(); });

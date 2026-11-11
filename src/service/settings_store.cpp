@@ -1,6 +1,6 @@
 #include "service/settings_store.h"
 
-#include "service/service_log.h"
+#include <stacklog/stacklog.h>
 
 #include <QMetaType>
 #include <QSettings>
@@ -117,12 +117,12 @@ SettingsLoadResult SettingsStore::load() const
     }
     if (result.error == SettingsError::None)
     {
-        qCDebug(lcIo) << "settings loaded file=" << m_settings->fileName();
+        STACKLOG_DEBUG() << "settings loaded file=" << m_settings->fileName().toStdString();
     }
     else
     {
-        qCWarning(lcIo) << "settings load failed error=" << settingsErrorName(result.error)
-                        << "file=" << m_settings->fileName();
+        STACKLOG_WARN() << "settings load failed error=" << settingsErrorName(result.error)
+                        << " file=" << m_settings->fileName().toStdString();
     }
     return result;
 }
@@ -154,24 +154,26 @@ SettingsError SettingsStore::save(const SessionState& state, QString* detail)
     switch (m_settings->status())
     {
     case QSettings::NoError:
-        qCDebug(lcIo) << "settings saved file=" << m_settings->fileName();
+        STACKLOG_DEBUG() << "settings saved file=" << m_settings->fileName().toStdString();
         return SettingsError::None;
     case QSettings::AccessError:
         if (detail != nullptr)
         {
             *detail = m_settings->fileName();
         }
-        qCWarning(lcIo) << "settings save failed error=AccessError file=" << m_settings->fileName();
+        STACKLOG_WARN() << "settings save failed error=AccessError file="
+                        << m_settings->fileName().toStdString();
         return SettingsError::AccessError;
     case QSettings::FormatError:
         if (detail != nullptr)
         {
             *detail = m_settings->fileName();
         }
-        qCWarning(lcIo) << "settings save failed error=FormatError file=" << m_settings->fileName();
+        STACKLOG_WARN() << "settings save failed error=FormatError file="
+                        << m_settings->fileName().toStdString();
         return SettingsError::FormatError;
     }
-    qCWarning(lcIo) << "settings save failed error=unknown file=" << m_settings->fileName();
+    STACKLOG_WARN() << "settings save failed error=unknown file=" << m_settings->fileName().toStdString();
     return SettingsError::AccessError;
 }
 

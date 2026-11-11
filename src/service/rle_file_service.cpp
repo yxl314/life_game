@@ -1,6 +1,6 @@
 #include "service/rle_file_service.h"
 
-#include "service/service_log.h"
+#include <stacklog/stacklog.h>
 
 #include <QFile>
 #include <QSaveFile>
@@ -24,12 +24,14 @@ RleReadResult RleFileService::read(const QString& path) const
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
     {
-        qCWarning(lcIo) << "RLE open failed path=" << path << "error=" << file.errorString();
+        STACKLOG_WARN() << "RLE open failed path=" << path.toStdString() << " error="
+                        << file.errorString().toStdString();
         return {std::nullopt, FileError::OpenFailed, {}, file.errorString()};
     }
     if (file.size() > kMaxRleFileBytes)
     {
-        qCWarning(lcIo) << "RLE read rejected reason=too_large path=" << path << "bytes=" << file.size();
+        STACKLOG_WARN() << "RLE read rejected reason=too_large path=" << path.toStdString()
+                        << " bytes=" << file.size();
         return {std::nullopt, FileError::TooLarge, {}, {}};
     }
 
@@ -48,13 +50,14 @@ RleReadResult RleFileService::read(const QString& path) const
     }
     if (data.size() > kMaxRleFileBytes)
     {
-        qCWarning(lcIo) << "RLE read rejected reason=too_large path=" << path << "bytes="
+        STACKLOG_WARN() << "RLE read rejected reason=too_large path=" << path.toStdString() << " bytes="
                         << data.size();
         return {std::nullopt, FileError::TooLarge, {}, {}};
     }
     if (file.error() != QFileDevice::NoError)
     {
-        qCWarning(lcIo) << "RLE read failed path=" << path << "error=" << file.errorString();
+        STACKLOG_WARN() << "RLE read failed path=" << path.toStdString() << " error="
+                        << file.errorString().toStdString();
         return {std::nullopt, FileError::ReadFailed, {}, file.errorString()};
     }
 
@@ -62,11 +65,12 @@ RleReadResult RleFileService::read(const QString& path) const
         domain::decodeRle(std::string_view(data.constData(), static_cast<std::size_t>(data.size())));
     if (!decoded.document.has_value())
     {
-        qCWarning(lcIo) << "RLE decode failed path=" << path << "code=" << rleErrorName(decoded.error.code)
-                        << "line=" << decoded.error.line << "column=" << decoded.error.column;
+        STACKLOG_WARN() << "RLE decode failed path=" << path.toStdString() << " code="
+                        << rleErrorName(decoded.error.code) << " line=" << decoded.error.line
+                        << " column=" << decoded.error.column;
         return {std::nullopt, FileError::DecodeFailed, decoded.error, {}};
     }
-    qCDebug(lcIo) << "RLE read path=" << path << "bytes=" << data.size();
+    STACKLOG_DEBUG() << "RLE read path=" << path.toStdString() << " bytes=" << data.size();
     return {decoded.document, FileError::None, {}, {}};
 }
 
@@ -81,7 +85,8 @@ FileError RleFileService::write(const QString& path, const QString& text, QStrin
         {
             *detail = file.errorString();
         }
-        qCWarning(lcIo) << "RLE write open failed path=" << path << "error=" << file.errorString();
+        STACKLOG_WARN() << "RLE write open failed path=" << path.toStdString() << " error="
+                        << file.errorString().toStdString();
         return FileError::OpenFailed;
     }
 
@@ -92,10 +97,11 @@ FileError RleFileService::write(const QString& path, const QString& text, QStrin
         {
             *detail = file.errorString();
         }
-        qCWarning(lcIo) << "RLE write failed path=" << path << "error=" << file.errorString();
+        STACKLOG_WARN() << "RLE write failed path=" << path.toStdString() << " error="
+                        << file.errorString().toStdString();
         return FileError::WriteFailed;
     }
-    qCDebug(lcIo) << "RLE written path=" << path << "bytes=" << data.size();
+    STACKLOG_DEBUG() << "RLE written path=" << path.toStdString() << " bytes=" << data.size();
     return FileError::None;
 }
 

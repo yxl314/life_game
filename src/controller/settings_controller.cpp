@@ -1,6 +1,6 @@
 #include "controller/settings_controller.h"
 
-#include "controller/controller_log.h"
+#include <stacklog/stacklog.h>
 #include "controller/error_text.h"
 #include "controller/session_controller.h"
 
@@ -43,7 +43,7 @@ void SettingsController::openSettings()
     dialog.setValues(m_session->settings());
     if (dialog.exec() != QDialog::Accepted)
     {
-        qCDebug(lcController) << "settings dialog cancelled";
+        STACKLOG_DEBUG() << "settings dialog cancelled";
         return;
     }
 

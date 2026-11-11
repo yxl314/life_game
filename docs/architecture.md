@@ -139,7 +139,8 @@ Controller 是唯一同时持有可写 `LifeModel*` 和具体 View 指针的层�
 
 ### App
 
-- `main.cpp`：`QApplication`、`QCommandLineParser`、日志初始化/关闭、创建窗口、事件循环。
+- `main.cpp`：`QApplication`、`QCommandLineParser`、stacklog 初始化/关闭、singleproc
+  单实例锁、创建窗口、事件循环。
 - `MainWindow`：组合根；构造 Model/View/Service/Controller，连接菜单/工具栏/状态栏。
 - App 可以 include 全部层；它不实现演化规则，也不直接读写 QSettings 键。
 
@@ -222,15 +223,15 @@ FileController::openRle()
 - 分配失败/OOM 视为不可恢复（进程终止）；大缓冲区使用 `new (std::nothrow)` 的路径返回
   `OutOfMemory`。
 
-### 日志
+### 日志与单实例
 
-- 五个 category：`lifegame.app`、`lifegame.model`、`lifegame.io`、
-  `lifegame.controller`、`lifegame.view`。
-- `src/app/logging` 是唯一安装 `qInstallMessageHandler` 的地方；文件 sink 2 MiB × 3 轮转，
-  `--verbose` 开 `lifegame.*.debug`，`--log-file` 覆盖路径。
+- `main.cpp` 直接调用 stacklog；各层使用 `STACKLOG_DEBUG/INFO/WARN/ERROR`。
+- 文件 sink 2 MiB × 3 轮转，默认 Info；`--verbose` 打开 Debug，`--log-file` 覆盖路径。
 - 只记录低频状态迁移、文件/设置失败、模拟/跳转生命周期；不记录每代、每帧、每格、
   RLE/棋盘正文或窗口几何全文。
-- Domain 不引入 Qt 日志；RLE 错误在 Service/Controller 边界记录。
+- Domain 不引入日志；RLE 错误在 Service/Controller 边界记录。
+- `singleproc::Guard("life-game")` 在事件循环前取得文件锁；已有实例时直接退出，
+  不把旧窗口带到前台。
 
 ### 并发
 
@@ -250,7 +251,6 @@ FileController::openRle()
 | `view_tests` | 被动 setter、速度滑块、导出上限、目录、设置对话框、进度框关闭 |
 | `controller_tests` | Model→View 推送、面板信号、绘制/图案、定时器、跳转、文件/设置、会话 |
 | `ui_tests` | 完整 MainWindow、确认/取消、Space 焦点、网格同步、截图 |
-| `logging_tests` | 文件 sink、category、verbose debug、轮转 |
 | `layering` | include 方向、View/Service↔Model 隔离、CJK/Qt 纯净度、`life_game.pri` 清单 |
 | `layering_selftest` | 门禁的负向 fixture |
 

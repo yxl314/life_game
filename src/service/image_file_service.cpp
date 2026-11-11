@@ -1,6 +1,6 @@
 #include "service/image_file_service.h"
 
-#include "service/service_log.h"
+#include <stacklog/stacklog.h>
 
 #include <QImage>
 #include <QImageWriter>
@@ -22,10 +22,12 @@ FileError ImageFileService::savePng(const QImage& image, const QString& path, QS
         {
             *detail = writer.errorString();
         }
-        qCWarning(lcIo) << "PNG write failed path=" << path << "error=" << writer.errorString();
+        STACKLOG_WARN() << "PNG write failed path=" << path.toStdString() << " error="
+                        << writer.errorString().toStdString();
         return FileError::EncodeFailed;
     }
-    qCInfo(lcIo) << "PNG written path=" << path << "size=" << image.width() << 'x' << image.height();
+    STACKLOG_INFO() << "PNG written path=" << path.toStdString() << " size=" << image.width() << 'x'
+                    << image.height();
     return FileError::None;
 }
 

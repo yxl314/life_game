@@ -2,10 +2,64 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
+#include <QStandardPaths>
+#include <QString>
 
-#include "app/logging.h"
+#include <singleproc/singleproc.hpp>
+#include <stacklog/stacklog.h>
+
 #include "app/main_window.h"
 #include "view/theme.h"
+
+namespace
+{
+
+/// @brief stacklog 文件 sink 的初始化结果。
+struct LogSetup
+{
+    bool ready = false;
+    QString path;
+};
+
+/**
+ * @brief 配置 stacklog 文件 sink。
+ * @param verbose 是否启用 Debug 级别。
+ * @param requestedPath 可选的显式日志文件路径。
+ */
+LogSetup setupLogging(bool verbose, const QString& requestedPath)
+{
+    QString path = requestedPath;
+    if (path.isEmpty())
+    {
+        path = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
+               QStringLiteral("/logs/life-game.log");
+    }
+
+    const QFileInfo info(path);
+    const QString directory = info.absolutePath();
+    QString baseName = info.completeBaseName();
+    if (baseName.isEmpty())
+    {
+        baseName = QStringLiteral("life-game");
+    }
+    QDir().mkpath(directory);
+
+    stacklog::Config config;
+    config.dir = directory.toStdString();
+    config.base_name = baseName.toStdString();
+    config.max_file_size = 2ULL * 1024 * 1024;
+    config.max_files = 3;
+    config.level = verbose ? stacklog::Level::Debug : stacklog::Level::Info;
+
+    LogSetup setup;
+    setup.ready = stacklog::init(config);
+    setup.path = QDir(directory).filePath(baseName + QStringLiteral(".log"));
+    return setup;
+}
+
+} // namespace
 
 int main(int argc, char* argv[])
 {
@@ -22,37 +76,53 @@ int main(int argc, char* argv[])
     parser.addHelpOption();
     parser.addVersionOption();
     const QCommandLineOption verboseOption(QStringLiteral("verbose"),
-                                           QStringLiteral("Enable lifegame.* debug logging."));
-    const QCommandLineOption logFileOption(QStringLiteral("log-file"),
-                                           QStringLiteral("Write logs to this path."),
-                                           QStringLiteral("path"));
+                                           QStringLiteral("Enable debug logging."));
+    const QCommandLineOption logFileOption(
+        QStringLiteral("log-file"), QStringLiteral("Write logs to this path."), QStringLiteral("path"));
     parser.addOption(verboseOption);
     parser.addOption(logFileOption);
     parser.process(application);
 
-    lifegame::app::logging::Options loggingOptions;
-    loggingOptions.verbose = parser.isSet(verboseOption);
-    loggingOptions.filePath = parser.value(logFileOption);
-    const bool logFileReady = lifegame::app::logging::initialize(loggingOptions);
-
-    qCInfo(lcApp) << "starting life-game" << QCoreApplication::applicationVersion() << "Qt" << qVersion()
-                  << "pid" << QCoreApplication::applicationPid() << "log" << lifegame::app::logging::logFilePath();
-    if (!logFileReady)
-    {
-        qCWarning(lcApp) << "file logging is unavailable; using stderr only";
-    }
-
-    lifegame::view::theme::apply(application);
+    const LogSetup logSetup = setupLogging(parser.isSet(verboseOption), parser.value(logFileOption));
 
     int exitCode = 0;
     {
-        lifegame::app::MainWindow window;
-        window.show();
-        exitCode = application.exec();
-        qCInfo(lcApp) << "event loop exited code=" << exitCode;
+        STACKLOG_TRACE("main");
+
+        STACKLOG_INFO() << "starting life-game " << QCoreApplication::applicationVersion().toStdString()
+                        << " Qt " << qVersion() << " pid " << QCoreApplication::applicationPid()
+                        << " log " << logSetup.path.toStdString();
+        if (!logSetup.ready)
+        {
+            STACKLOG_WARN() << "file logging is unavailable; using stderr only";
+        }
+
+        // 单实例锁只负责互斥；重复启动直接退出，不尝试把已有窗口带到前台。
+        const singleproc::Guard guard("life-game");
+        if (guard.state() == singleproc::Guard::State::Error)
+        {
+            STACKLOG_ERROR() << "single-instance lock failed errno=" << guard.errorCode();
+            exitCode = 1;
+        }
+        else if (!guard.isPrimary())
+        {
+            STACKLOG_INFO() << "another instance is already running";
+            exitCode = 0;
+        }
+        else
+        {
+            lifegame::view::theme::apply(application);
+
+            {
+                lifegame::app::MainWindow window;
+                window.show();
+                exitCode = application.exec();
+            }
+            STACKLOG_INFO() << "event loop exited code=" << exitCode;
+            STACKLOG_INFO() << "shutdown";
+        }
     }
 
-    qCInfo(lcApp) << "shutdown";
-    lifegame::app::logging::shutdown();
+    stacklog::shutdown();
     return exitCode;
 }

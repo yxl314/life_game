@@ -35,9 +35,10 @@
 - **错误码而非异常**：应用代码以 `-fno-exceptions` 编译；可恢复失败使用
   `model::CommandResult`、`service::FileError`、`service::SettingsError`、
   `domain::RleError` 等类型化错误码，Controller 负责映射成一条可操作的中文提示。
-- **可运维日志**：五个 `QLoggingCategory`（app/model/io/controller/view）写入
-  轮转文件，默认只记 Info/Warning/Critical，`--verbose` 才打开 debug；不会逐代/逐格刷日志。
-- **工程化齐全**：qmake 工程、8 个用例（6 个 QTest + 2 个分层检查）、ASan/UBSan 选项、
+- **可运维日志**：内嵌 stacklog 直接写入 2 MiB × 3 份轮转文件，默认 Info，
+  `--verbose` 才打开 Debug，`--log-file` 可覆盖路径；不会逐代/逐格刷日志。
+- **单实例**：内嵌 singleproc 用文件锁保证同一用户只运行一个实例；重复启动直接退出。
+- **工程化齐全**：qmake 工程、7 个用例（5 个 QTest + 2 个分层检查）、ASan/UBSan 选项、
   `.clang-format`、README 与架构文档。
 
 ## 功能
@@ -80,6 +81,14 @@
 | 重置缩放 | `Ctrl+0` |
 | 显示 / 隐藏网格 | `Ctrl+G` |
 | 全屏 | `F11` |
+
+### 日志与单实例
+
+- 同一用户同时只能运行一个实例；已有实例时，新进程直接退出（返回 0），
+  不会把旧窗口带到前台。
+- 日志写入 `QStandardPaths::AppLocalDataLocation/logs/life-game.log`（Linux 下通常是
+  `~/.local/share/life-game/life-game/logs/life-game.log`），按 2 MiB × 3 份轮转。
+- `--log-file <path>` 覆盖日志路径；`--verbose` 打开 Debug 级别。
 
 ## 图案库
 
@@ -183,8 +192,10 @@ src/model/                    可观察 Model + CommandResult + 异步管线
 src/service/                  QSettings / RLE / PNG + FileError/SettingsError
 src/view/                     自绘棋盘、面板、对话框、确认/提示、目录、主题
 src/controller/               输入、Presenter、会话/设置、错误文案映射
-src/app/                      组合根、日志 sink、main
-tests/                        domain / model / view / controller / ui / logging
+src/app/                      组合根、main（stacklog 初始化）
+third_party/singleproc/       内嵌库：单实例锁
+third_party/stacklog/         内嵌库：调用链日志
+tests/                        domain / model / view / controller / ui
 tools/check_layering.py       层间 include / 纯净度门禁
 tools/layering_selftest.py    门禁负向 fixture
 ```
@@ -271,7 +282,7 @@ qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
 ```
 
 每个测试是**独立工程**（各自的 `.pro`），脚本逐个 `qmake6` + `make` 并运行，最后
-跑两个分层检查。八个用例：
+跑两个分层检查。七个用例：
 
 | 用例 | 依赖 | 覆盖 |
 |---|---|---|
@@ -280,7 +291,6 @@ qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
 | `view_tests` | QtWidgets | 速度刻度、滑块不回写、被动 setter、1500×1000 渲染/导出、设置对话框、进度框关闭 |
 | `controller_tests` | QtWidgets | Bresenham、面板信号、绘制/图案、定时器、跳转方向/进度、Model→View 推送、文件路径、设置错误、会话恢复 |
 | `ui_tests` | QtWidgets | 完整 MainWindow、确认/取消、Space、网格、1500×1000 渲染/模拟、截图 |
-| `logging_tests` | QtCore | 文件 sink、category、verbose debug、轮转 |
 | `layering` | Python | include 方向、绕过、CJK、源码清单完整性 |
 | `layering_selftest` | Python | 架构门禁自身的负向 fixture |
 
@@ -346,8 +356,10 @@ ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
 - **错误分层**：Domain 用 `RleError` 枚举；Model 用 `CommandResult`；Service 用
   `FileError`/`SettingsError` 并附可选系统详情；Controller 统一映射为一条中文提示；
   Model 不产生用户文案。可恢复错误不使用异常；分配失败被视为不可恢复（进程终止）。
-- **日志分层**：`app/logging` 是唯一安装 `qInstallMessageHandler` 的地方；
-  model/service/controller/view 各自拥有 `Q_LOGGING_CATEGORY`，Domain 不引入 Qt 日志。
+- **日志与单实例**：`main.cpp` 直接调用 stacklog；各层使用
+  `STACKLOG_DEBUG/INFO/WARN/ERROR` 记录低频状态迁移与失败，不引入
+  `QLoggingCategory`，也不逐代/逐格刷日志。`singleproc::Guard` 在事件循环前取得
+  文件锁，重复启动直接退出，不把旧窗口带到前台。
 
 ## C++17 用法
 
@@ -390,7 +402,6 @@ ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
 - 回退范围受快照间隔与 64 张上限约束；
 - 当前只提供中文文案；`tr()` 已就位，但未附带 `.ts` 翻译文件；
 - 文件对话框不记忆上次打开目录；
-- 日志文件不处理多实例并发轮转；
 - 分配失败/OOM 被视为不可恢复（`-fno-exceptions` 下进程终止），不会弹错误框；
 - 未提供 `.desktop`/安装包集成；安装即拷贝 `build/app/bin/lifegame`。
 
@@ -398,6 +409,7 @@ ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
 
 - 工具栏与按钮图标来自 [Lucide](https://lucide.dev)（ISC License），
   许可证见 `resources/icons/LICENSE-lucide.txt`。
+- `third_party/singleproc`、`third_party/stacklog` 是内嵌第三方源码，随主程序一起编译。
 
 ## 许可
 

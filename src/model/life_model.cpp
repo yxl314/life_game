@@ -1,6 +1,6 @@
 #include "model/life_model.h"
 
-#include "model/model_log.h"
+#include <stacklog/stacklog.h>
 
 #include <QMetaObject>
 #include <QMetaType>
@@ -137,7 +137,7 @@ CommandResult LifeModel::setRunning(bool running)
 {
     if (!canMutate())
     {
-        qCDebug(lcModel) << "setRunning rejected reason=busy";
+        STACKLOG_DEBUG() << "setRunning rejected reason=busy";
         return CommandResult::Busy;
     }
     if (!running)
@@ -151,14 +151,14 @@ CommandResult LifeModel::setRunning(bool running)
     }
     if (running && m_population == 0)
     {
-        qCInfo(lcModel) << "simulation start rejected reason=empty_board";
+        STACKLOG_INFO() << "simulation start rejected reason=empty_board";
         emit simulationStalled(StallReason::EmptyBoard);
         return CommandResult::EmptyBoard;
     }
 
     m_running = running;
-    qCInfo(lcModel) << (running ? "simulation started" : "simulation stopped")
-                    << "generation" << m_generation << "population" << m_population;
+    STACKLOG_INFO() << (running ? "simulation started" : "simulation stopped")
+                    << " generation " << m_generation << " population" << m_population;
     emit runningChanged(running);
     return CommandResult::Success;
 }
@@ -266,8 +266,8 @@ CommandResult LifeModel::placePattern(const domain::Pattern& pattern, int center
     if (pattern.width() <= 0 || pattern.height() <= 0 || pattern.population() == 0 ||
         !pattern.isConsistent())
     {
-        qCWarning(lcModel) << "pattern rejected reason=invalid_pattern width=" << pattern.width()
-                           << "height=" << pattern.height() << "cells=" << pattern.cells().size();
+        STACKLOG_WARN() << "pattern rejected reason=invalid_pattern width=" << pattern.width()
+                        << " height=" << pattern.height() << " cells=" << pattern.cells().size();
         return CommandResult::InvalidPattern;
     }
 
@@ -314,8 +314,8 @@ CommandResult LifeModel::placePattern(const domain::Pattern& pattern, int center
     }
     m_population = m_board.population();
     invalidateHistoryFrom(m_generation);
-    qCDebug(lcModel) << "pattern placed center" << centerRow << centerCol << "size" << pattern.width() << 'x'
-                     << pattern.height() << "clipped" << clipped;
+    STACKLOG_DEBUG() << "pattern placed center " << centerRow << ' ' << centerCol << " size "
+                     << pattern.width() << 'x' << pattern.height() << " clipped " << clipped;
     emit boardChanged();
     emit statusChanged(stats());
     return clipped ? CommandResult::Clipped : CommandResult::Success;
@@ -333,7 +333,7 @@ CommandResult LifeModel::clear()
     m_population = 0;
     m_generation = 0;
     resetHistory();
-    qCInfo(lcModel) << "board cleared";
+    STACKLOG_INFO() << "board cleared";
     emit boardChanged();
     emit statusChanged(stats());
     return CommandResult::Success;
@@ -356,7 +356,7 @@ CommandResult LifeModel::randomize(int densityPercent)
     m_population = m_board.population();
     m_generation = 0;
     resetHistory();
-    qCInfo(lcModel) << "board randomized density" << density << "seed" << seed;
+    STACKLOG_INFO() << "board randomized density " << density << " seed " << seed;
     emit boardChanged();
     emit statusChanged(stats());
     return CommandResult::Success;
@@ -376,7 +376,7 @@ CommandResult LifeModel::resizeBoard(int width, int height)
     std::unique_ptr<domain::Grid> board(new (std::nothrow) domain::Grid(clampedWidth, clampedHeight));
     if (!board)
     {
-        qCCritical(lcModel) << "resize failed reason=out_of_memory requested" << width << 'x' << height;
+        STACKLOG_ERROR() << "resize failed reason=out_of_memory requested " << width << 'x' << height;
         return CommandResult::OutOfMemory;
     }
 
@@ -385,8 +385,8 @@ CommandResult LifeModel::resizeBoard(int width, int height)
     {
         return replaced;
     }
-    qCInfo(lcModel) << "board resized requested" << width << 'x' << height << "actual" << clampedWidth << 'x'
-                    << clampedHeight << "adjusted" << adjusted;
+    STACKLOG_INFO() << "board resized requested " << width << 'x' << height << " actual "
+                    << clampedWidth << 'x' << clampedHeight << " adjusted " << adjusted;
     return adjusted ? CommandResult::Adjusted : CommandResult::Success;
 }
 
@@ -406,7 +406,7 @@ CommandResult LifeModel::setRule(const domain::Rule& rule)
     m_pendingStepId = 0;
     m_rule = rule;
     resetHistory();
-    qCInfo(lcModel) << "rule changed from" << oldRule.c_str() << "to" << m_rule.notation().c_str();
+    STACKLOG_INFO() << "rule changed from " << oldRule.c_str() << " to " << m_rule.notation().c_str();
     emit configurationChanged();
     emit statusChanged(stats());
     return CommandResult::Success;
@@ -417,8 +417,8 @@ CommandResult LifeModel::setRuleByNotation(std::string_view notation)
     const domain::RuleParseResult parsed = domain::Rule::parse(notation);
     if (parsed.error != domain::RuleParseError::None)
     {
-        qCWarning(lcModel) << "invalid rule notation=" << std::string(notation).c_str()
-                           << "error=" << domain::ruleParseErrorName(parsed.error);
+        STACKLOG_WARN() << "invalid rule notation=" << std::string(notation).c_str()
+                        << " error=" << domain::ruleParseErrorName(parsed.error);
         return CommandResult::InvalidRule;
     }
     return setRule(parsed.rule);
@@ -439,7 +439,7 @@ CommandResult LifeModel::setBoundary(domain::Boundary boundary)
     m_pendingStepId = 0;
     m_boundary = boundary;
     resetHistory();
-    qCInfo(lcModel) << "boundary changed to" << (boundary == domain::Boundary::Wrap ? "wrap" : "dead");
+    STACKLOG_INFO() << "boundary changed to " << (boundary == domain::Boundary::Wrap ? "wrap" : "dead");
     emit configurationChanged();
     emit statusChanged(stats());
     return CommandResult::Success;
@@ -461,7 +461,7 @@ CommandResult LifeModel::setSnapshotInterval(int generations)
 
     m_engine.discardPending();
     m_pendingStepId = 0;
-    qCInfo(lcModel) << "snapshot interval changed to" << interval;
+    STACKLOG_INFO() << "snapshot interval changed to " << interval;
     m_history.setInterval(interval);
     resetHistory();
     emit statusChanged(stats());
@@ -485,7 +485,7 @@ CommandResult LifeModel::setGeneration(int generation)
     m_pendingStepId = 0;
     m_generation = value;
     resetHistory();
-    qCInfo(lcModel) << "generation set to" << value;
+    STACKLOG_INFO() << "generation set to " << value;
     emit statusChanged(stats());
     return CommandResult::Success;
 }
@@ -494,21 +494,21 @@ CommandResult LifeModel::loadDocument(const domain::DecodedDocument& document)
 {
     if (!canMutate())
     {
-        qCDebug(lcModel) << "document rejected reason=busy";
+        STACKLOG_DEBUG() << "document rejected reason=busy";
         return CommandResult::Busy;
     }
 
     const domain::Pattern& pattern = document.pattern;
     if (!pattern.isConsistent() || pattern.width() <= 0 || pattern.height() <= 0)
     {
-        qCWarning(lcModel) << "document rejected reason=invalid_size width=" << pattern.width()
-                           << "height=" << pattern.height();
+        STACKLOG_WARN() << "document rejected reason=invalid_size width=" << pattern.width()
+                        << " height=" << pattern.height();
         return CommandResult::InvalidPattern;
     }
     if (pattern.width() > domain::kMaxBoardWidth || pattern.height() > domain::kMaxBoardHeight)
     {
-        qCWarning(lcModel) << "document rejected reason=too_large width=" << pattern.width()
-                           << "height=" << pattern.height();
+        STACKLOG_WARN() << "document rejected reason=too_large width=" << pattern.width()
+                        << " height=" << pattern.height();
         return CommandResult::TooLarge;
     }
 
@@ -518,8 +518,8 @@ CommandResult LifeModel::loadDocument(const domain::DecodedDocument& document)
         const domain::RuleParseResult parsed = domain::Rule::parse(document.rule);
         if (parsed.error != domain::RuleParseError::None)
         {
-            qCWarning(lcModel) << "document rejected reason=invalid_rule error="
-                               << domain::ruleParseErrorName(parsed.error);
+            STACKLOG_WARN() << "document rejected reason=invalid_rule error="
+                            << domain::ruleParseErrorName(parsed.error);
             return CommandResult::InvalidRule;
         }
         rule = parsed.rule;
@@ -530,7 +530,7 @@ CommandResult LifeModel::loadDocument(const domain::DecodedDocument& document)
     std::unique_ptr<domain::Grid> board(new (std::nothrow) domain::Grid(width, height));
     if (!board)
     {
-        qCCritical(lcModel) << "document load failed reason=out_of_memory";
+        STACKLOG_ERROR() << "document load failed reason=out_of_memory";
         return CommandResult::OutOfMemory;
     }
     for (int row = 0; row < pattern.height(); ++row)
@@ -555,8 +555,8 @@ CommandResult LifeModel::loadDocument(const domain::DecodedDocument& document)
         m_rule = *rule;
         emit configurationChanged();
     }
-    qCInfo(lcModel) << "document loaded board" << width << 'x' << height << "population" << m_population
-                    << "rule" << m_rule.notation().c_str();
+    STACKLOG_INFO() << "document loaded board " << width << 'x' << height << " population " << m_population
+                    << " rule " << m_rule.notation().c_str();
     return CommandResult::Success;
 }
 
@@ -574,7 +574,7 @@ CommandResult LifeModel::step()
     domain::GridStats stats;
     domain::Grid::computeNext(m_board, &next, m_rule, m_boundary, &stats);
     applyStep(std::move(next), stats);
-    qCDebug(lcModel) << "manual step generation" << m_generation;
+    STACKLOG_DEBUG() << "manual step generation " << m_generation;
     return CommandResult::Success;
 }
 
@@ -597,7 +597,7 @@ CommandResult LifeModel::requestStep()
     const CommandResult result = m_engine.request(m_board, m_rule, m_boundary, &requestId);
     if (result == CommandResult::OutOfMemory)
     {
-        qCCritical(lcModel) << "requestStep failed reason=out_of_memory";
+        STACKLOG_ERROR() << "requestStep failed reason=out_of_memory";
     }
     if (result != CommandResult::Success)
     {
@@ -611,7 +611,7 @@ void LifeModel::onStepReady(quint64 requestId)
 {
     if (requestId == 0 || requestId != m_pendingStepId)
     {
-        qCDebug(lcModel) << "stale step discarded id=" << requestId << "pending=" << m_pendingStepId;
+        STACKLOG_DEBUG() << "stale step discarded id=" << requestId << " pending=" << m_pendingStepId;
         return;
     }
     m_pendingStepId = 0;
@@ -629,7 +629,7 @@ void LifeModel::onStepReady(quint64 requestId)
 void LifeModel::onStepFailed(CommandResult reason)
 {
     m_pendingStepId = 0;
-    qCCritical(lcModel) << "step failed reason=" << commandResultName(reason);
+    STACKLOG_ERROR() << "step failed reason=" << commandResultName(reason);
     if (m_running)
     {
         m_running = false;
@@ -652,8 +652,8 @@ void LifeModel::applyStep(domain::Grid&& next, const domain::GridStats& gridStat
     if (unchanged && m_running)
     {
         const StallReason reason = m_population == 0 ? StallReason::Extinct : StallReason::StillLife;
-        qCInfo(lcModel) << "simulation stalled reason=" << stallReasonName(reason) << "generation" << m_generation
-                        << "population" << m_population;
+        STACKLOG_INFO() << "simulation stalled reason=" << stallReasonName(reason)
+                        << " generation " << m_generation << " population " << m_population;
         (void)setRunning(false);
         emit simulationStalled(reason);
     }
@@ -663,13 +663,13 @@ CommandResult LifeModel::startJump(int targetGeneration)
 {
     if (!canMutate())
     {
-        qCDebug(lcModel) << "jump rejected reason=busy";
+        STACKLOG_DEBUG() << "jump rejected reason=busy";
         return CommandResult::Busy;
     }
     if (targetGeneration < 0 || targetGeneration == m_generation)
     {
-        qCWarning(lcModel) << "jump rejected reason=invalid_target target=" << targetGeneration
-                           << "current=" << m_generation;
+        STACKLOG_WARN() << "jump rejected reason=invalid_target target=" << targetGeneration
+                        << " current=" << m_generation;
         return CommandResult::InvalidTarget;
     }
 
@@ -692,7 +692,7 @@ CommandResult LifeModel::startJump(int targetGeneration)
             m_history.snapshotAtOrBefore(targetGeneration);
         if (!snapshot.has_value())
         {
-            qCInfo(lcModel) << "jump rejected reason=no_history target=" << targetGeneration;
+            STACKLOG_INFO() << "jump rejected reason=no_history target=" << targetGeneration;
             return CommandResult::NoHistory;
         }
         startGeneration = snapshot->generation;
@@ -717,13 +717,13 @@ CommandResult LifeModel::startJump(int targetGeneration)
     auto cancel = std::shared_ptr<std::atomic_bool>(new (std::nothrow) std::atomic_bool(false));
     if (!cancel)
     {
-        qCCritical(lcModel) << "jump failed reason=out_of_memory";
+        STACKLOG_ERROR() << "jump failed reason=out_of_memory";
         return CommandResult::OutOfMemory;
     }
     m_jumpCancel = cancel;
     m_jumping = true;
-    qCInfo(lcModel) << "jump started from" << startGeneration << "to" << targetGeneration << "replay" << total
-                    << "forward" << forward;
+    STACKLOG_INFO() << "jump started from " << startGeneration << " to " << targetGeneration
+                    << " replay " << total << " forward " << forward;
 
     JumpRequest request;
     request.startBoard = std::move(startBoard);
@@ -760,7 +760,7 @@ void LifeModel::cancelJump()
 
 void LifeModel::reportJumpProgress(int done)
 {
-    qCDebug(lcModel) << "jump progress" << done;
+    STACKLOG_DEBUG() << "jump progress " << done;
     emit jumpProgress(done);
 }
 
@@ -772,13 +772,13 @@ void LifeModel::onJumpFinished()
     const JumpOutcome outcome = m_jumpWatcher.result();
     if (outcome.cancelled)
     {
-        qCInfo(lcModel) << "jump cancelled generation" << m_generation;
+        STACKLOG_INFO() << "jump cancelled generation " << m_generation;
         emit jumpCancelled();
         return;
     }
     if (outcome.error != CommandResult::Success)
     {
-        qCWarning(lcModel) << "jump failed reason=" << commandResultName(outcome.error);
+        STACKLOG_WARN() << "jump failed reason=" << commandResultName(outcome.error);
         emit jumpFailed(outcome.error);
         return;
     }
@@ -803,8 +803,8 @@ void LifeModel::onJumpFinished()
         {
             if (!m_history.recordPacked(snapshot.generation, snapshot.packedBoard))
             {
-                qCWarning(lcModel) << "jump snapshot allocation failed generation"
-                                   << snapshot.generation;
+                STACKLOG_WARN() << "jump snapshot allocation failed generation "
+                                << snapshot.generation;
             }
         }
     }
@@ -814,7 +814,7 @@ void LifeModel::onJumpFinished()
         resetHistory();
     }
 
-    qCInfo(lcModel) << "jump finished generation" << m_generation << "population" << m_population;
+    STACKLOG_INFO() << "jump finished generation " << m_generation << " population " << m_population;
     emit boardChanged();
     emit statusChanged(stats());
     emit jumpFinished(m_generation);
@@ -824,7 +824,7 @@ void LifeModel::resetHistory()
 {
     if (!m_history.reset(m_generation, makeSnapshot(m_board)))
     {
-        qCWarning(lcModel) << "history anchor allocation failed generation" << m_generation;
+        STACKLOG_WARN() << "history anchor allocation failed generation " << m_generation;
     }
 }
 
@@ -837,7 +837,7 @@ void LifeModel::recordSnapshot()
     std::shared_ptr<const domain::Grid> snapshot = makeSnapshot(m_board);
     if (snapshot && !m_history.record(m_generation, snapshot))
     {
-        qCWarning(lcModel) << "history snapshot allocation failed generation" << m_generation;
+        STACKLOG_WARN() << "history snapshot allocation failed generation " << m_generation;
     }
 }
 

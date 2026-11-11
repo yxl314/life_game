@@ -1,6 +1,6 @@
 #include "controller/file_controller.h"
 
-#include "controller/controller_log.h"
+#include <stacklog/stacklog.h>
 
 #include "view/dialogs.h"
 
@@ -91,7 +91,7 @@ void FileController::openRle()
         tr("生命游戏图案 (*.rle *.RLE *.txt);;所有文件 (*)"));
     if (path.isEmpty())
     {
-        qCDebug(lcController) << "open RLE cancelled";
+        STACKLOG_DEBUG() << "open RLE cancelled";
         return;
     }
 
@@ -113,8 +113,8 @@ void FileController::openRle()
     }
 
     m_lastDir = QFileInfo(path).absolutePath();
-    qCInfo(lcController) << "RLE opened path=" << path << "board=" << m_model->width() << 'x'
-                         << m_model->height() << "population" << m_model->stats().population;
+    STACKLOG_INFO() << "RLE opened path=" << path.toStdString() << " board=" << m_model->width() << 'x'
+                    << m_model->height() << " population " << m_model->stats().population;
     if (m_messages != nullptr)
     {
         m_messages->showMessage(tr("已打开 %1（%2 × %3）。")
@@ -131,7 +131,7 @@ service::FileError FileController::savePath(const QString& path, QString* detail
     const service::FileError error = m_rle->write(path, text, detail);
     if (error == service::FileError::None)
     {
-        qCInfo(lcController) << "RLE saved path=" << path << "bytes=" << text.size();
+        STACKLOG_INFO() << "RLE saved path=" << path.toStdString() << " bytes=" << text.size();
     }
     return error;
 }
@@ -145,7 +145,7 @@ void FileController::saveRle()
         tr("生命游戏图案 (*.rle);;所有文件 (*)"));
     if (path.isEmpty())
     {
-        qCDebug(lcController) << "save RLE cancelled";
+        STACKLOG_DEBUG() << "save RLE cancelled";
         return;
     }
     if (QFileInfo(path).suffix().isEmpty())
@@ -174,8 +174,8 @@ service::FileError FileController::exportPath(const QString& path, QString* deta
     const service::FileError error = m_image->savePng(image, path, detail);
     if (error == service::FileError::None)
     {
-        qCInfo(lcController) << "PNG exported path=" << path << "size=" << image.width() << 'x'
-                             << image.height();
+        STACKLOG_INFO() << "PNG exported path=" << path.toStdString() << " size=" << image.width() << 'x'
+                        << image.height();
     }
     return error;
 }
@@ -189,7 +189,7 @@ void FileController::exportImage()
         tr("PNG 图片 (*.png);;所有文件 (*)"));
     if (path.isEmpty())
     {
-        qCDebug(lcController) << "export PNG cancelled";
+        STACKLOG_DEBUG() << "export PNG cancelled";
         return;
     }
     if (QFileInfo(path).suffix().isEmpty())

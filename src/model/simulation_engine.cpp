@@ -1,6 +1,6 @@
 #include "model/simulation_engine.h"
 
-#include "model/model_log.h"
+#include <stacklog/stacklog.h>
 
 #include <QPair>
 #include <QThreadPool>
@@ -85,14 +85,16 @@ CommandResult SimulationEngine::request(const domain::Grid& board,
     const int height = board.height();
     if (width <= 0 || height <= 0)
     {
-        qCWarning(lcModel) << "step request rejected reason=out_of_bounds width=" << width << "height=" << height;
+        STACKLOG_WARN() << "step request rejected reason=out_of_bounds width=" << width
+                        << " height=" << height;
         return CommandResult::OutOfBounds;
     }
 
     auto snapshot = std::shared_ptr<const domain::Grid>(new (std::nothrow) domain::Grid(board));
     if (!snapshot)
     {
-        qCCritical(lcModel) << "step request failed reason=out_of_memory width=" << width << "height=" << height;
+        STACKLOG_ERROR() << "step request failed reason=out_of_memory width=" << width
+                         << " height=" << height;
         return CommandResult::OutOfMemory;
     }
     m_snapshot = std::move(snapshot);
@@ -137,7 +139,7 @@ void SimulationEngine::discardPending()
     {
         return;
     }
-    qCDebug(lcModel) << "pending step discarded id=" << m_activeId;
+    STACKLOG_DEBUG() << "pending step discarded id=" << m_activeId;
     m_activeId = 0;
 }
 
@@ -165,8 +167,8 @@ void SimulationEngine::onFinished()
     }
     if (expectedTasks > 0 && m_watcher.future().resultCount() < expectedTasks)
     {
-        qCCritical(lcModel) << "step computation incomplete results="
-                            << m_watcher.future().resultCount() << "expected=" << expectedTasks;
+        STACKLOG_ERROR() << "step computation incomplete results="
+                         << m_watcher.future().resultCount() << " expected=" << expectedTasks;
         m_stats = domain::GridStats{};
         emit stepFailed(CommandResult::ComputationFailed);
         return;

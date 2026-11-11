@@ -84,7 +84,7 @@ python3 tools/check_layering.py .
 python3 tools/layering_selftest.py
 ```
 
-当前结果：主程序和 6 个测试工程通过；门禁 100 个源文件通过；负向 fixture 全部按预期失败。
+当前结果：主程序和 5 个测试工程通过；门禁 90 个源文件通过；负向 fixture 全部按预期失败。
 
 ## 复审改进落实
 
@@ -113,8 +113,8 @@ python3 tools/layering_selftest.py
 9. **OOM 策略**：`PackedGrid` 使用 `new (std::nothrow)` 分配字存储并提供 `valid()`；
    `History` 返回放快照失败；Jump 快照失败返回 `OutOfMemory`。大 Grid 和快照路径
    不再依赖异常。
-10. **测试清单**：`logging_tests.pro` 只链 `app/logging` + `model/model_log`；
-    新增的 Controller bridge/接口都列入 `LIFEGAME_CONTROLLER_*`，由分层门禁检查。
+10. **测试清单**：日志由内嵌 stacklog 自身保证，不单设 `logging_tests`；新增的
+    Controller bridge/接口都列入 `LIFEGAME_CONTROLLER_*`，由分层门禁检查。
 
 ## 剩余设计取舍
 

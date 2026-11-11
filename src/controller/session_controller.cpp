@@ -1,6 +1,6 @@
 #include "controller/session_controller.h"
 
-#include "controller/controller_log.h"
+#include <stacklog/stacklog.h>
 #include "controller/error_text.h"
 #include "controller/session_service.h"
 #include "controller/session_settings.h"
@@ -48,12 +48,12 @@ bool SessionController::restore()
     const SessionRestoreResult result = m_service->restore();
     m_settings = result.settings;
 
-    qCInfo(lcController) << "session restore start has_stored_board=" << result.hadStoredBoard()
-                         << "restored=" << result.restored();
+    STACKLOG_INFO() << "session restore start has_stored_board=" << result.hadStoredBoard()
+                    << " restored=" << result.restored();
     if (result.error != service::SettingsError::None)
     {
-        qCWarning(lcController) << "settings restore failed error="
-                                << service::settingsErrorName(result.error);
+        STACKLOG_WARN() << "settings restore failed error="
+                        << service::settingsErrorName(result.error);
         if (m_messages != nullptr)
         {
             m_messages->showMessage(settingsErrorText(result.error, result.detail), 8000);
@@ -72,7 +72,7 @@ bool SessionController::restore()
         }
         break;
     case SessionRestoreStatus::DecodeFailed:
-        qCWarning(lcController) << "stored RLE decode failed";
+        STACKLOG_WARN() << "stored RLE decode failed";
         if (m_messages != nullptr)
         {
             m_messages->showMessage(tr("上次会话的棋盘无法解析，已改为示例棋盘。"), 8000);
@@ -97,12 +97,12 @@ bool SessionController::restore()
     if (m_window != nullptr && !result.windowGeometry.isEmpty() &&
         !m_window->restoreGeometry(result.windowGeometry))
     {
-        qCDebug(lcController) << "window geometry restore failed";
+        STACKLOG_DEBUG() << "window geometry restore failed";
     }
 
-    qCInfo(lcController) << "session restore done restored=" << result.restored() << "board="
-                         << m_model->width() << 'x' << m_model->height() << "generation"
-                         << m_model->stats().generation;
+    STACKLOG_INFO() << "session restore done restored=" << result.restored() << " board="
+                    << m_model->width() << 'x' << m_model->height() << " generation "
+                    << m_model->stats().generation;
     return result.restored();
 }
 
@@ -115,7 +115,7 @@ service::SettingsError SessionController::save()
     const service::SettingsError error = m_service->save(m_settings, geometry, &detail);
     if (error != service::SettingsError::None)
     {
-        qCWarning(lcController) << "session save failed error=" << service::settingsErrorName(error);
+        STACKLOG_WARN() << "session save failed error=" << service::settingsErrorName(error);
         if (m_messages != nullptr)
         {
             m_messages->showMessage(settingsErrorText(error, detail), 8000);
@@ -123,8 +123,8 @@ service::SettingsError SessionController::save()
     }
     else
     {
-        qCInfo(lcController) << "session saved board=" << m_model->width() << 'x' << m_model->height()
-                             << "generation" << m_model->stats().generation;
+        STACKLOG_INFO() << "session saved board=" << m_model->width() << 'x' << m_model->height()
+                        << " generation " << m_model->stats().generation;
     }
     return error;
 }
@@ -141,8 +141,8 @@ void SessionController::applySettings(const shared::AppSettings& values)
     {
         m_settingsPort->apply(m_settings);
     }
-    qCInfo(lcController) << "settings applied jump_step=" << m_settings.jumpStep << "size_step="
-                         << m_settings.sizeStep << "snapshot_interval=" << m_settings.snapshotInterval;
+    STACKLOG_INFO() << "settings applied jump_step=" << m_settings.jumpStep << " size_step="
+                    << m_settings.sizeStep << " snapshot_interval=" << m_settings.snapshotInterval;
 }
 
 } // namespace lifegame::controller
