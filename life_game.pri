@@ -109,6 +109,8 @@ LIFEGAME_CONTROLLER_HEADERS = \
     $$LIFEGAME_ROOT/src/controller/configuration_controller.h \
     $$LIFEGAME_ROOT/src/controller/session_controller.h \
     $$LIFEGAME_ROOT/src/controller/session_service.h \
+    $$LIFEGAME_ROOT/src/controller/session_settings.h \
+    $$LIFEGAME_ROOT/src/controller/controller_settings_bridge.h \
     $$LIFEGAME_ROOT/src/controller/settings_controller.h
 
 LIFEGAME_CONTROLLER_SOURCES = \
@@ -123,6 +125,7 @@ LIFEGAME_CONTROLLER_SOURCES = \
     $$LIFEGAME_ROOT/src/controller/configuration_controller.cpp \
     $$LIFEGAME_ROOT/src/controller/session_controller.cpp \
     $$LIFEGAME_ROOT/src/controller/session_service.cpp \
+    $$LIFEGAME_ROOT/src/controller/controller_settings_bridge.cpp \
     $$LIFEGAME_ROOT/src/controller/settings_controller.cpp
 
 LIFEGAME_APP_HEADERS = \

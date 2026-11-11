@@ -17,14 +17,13 @@
 #include "service/image_file_service.h"
 #include "service/rle_file_service.h"
 #include "model/life_model.h"
-#include "view/board_view.h"
 #include "view/interfaces.h"
 
 namespace lifegame::controller
 {
 
 FileController::FileController(model::LifeModel* model,
-                               view::BoardView* view,
+                               view::BoardImageSource* imageSource,
                                view::MessageSink* messages,
                                QWidget* dialogParent,
                                service::RleFilePort* rleService,
@@ -32,7 +31,7 @@ FileController::FileController(model::LifeModel* model,
                                QObject* parent)
     : QObject(parent),
       m_model(model),
-      m_view(view),
+      m_imageSource(imageSource),
       m_messages(messages),
       m_dialogParent(dialogParent),
       m_rle(rleService),
@@ -171,7 +170,7 @@ void FileController::saveRle()
 
 service::FileError FileController::exportPath(const QString& path, QString* detail)
 {
-    const QImage image = m_view->renderBoardImage();
+    const QImage image = m_imageSource->renderBoardImage();
     const service::FileError error = m_image->savePng(image, path, detail);
     if (error == service::FileError::None)
     {

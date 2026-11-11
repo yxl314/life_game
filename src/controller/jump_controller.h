@@ -51,6 +51,12 @@ public slots:
     /// @param delta Positive forward, negative backward.
     void jumpBy(int delta);
 
+    /// @return Current jump amount in generations.
+    int jumpStep() const;
+
+    /// @param step Jump amount in generations; clamped to the settings range.
+    void setJumpStep(int step);
+
 private slots:
     void rewindBy(int generations);
     void onJumpStarted(const lifegame::shared::JumpInfo& info);
@@ -67,6 +73,7 @@ private:
     view::MessageSink* m_messages = nullptr;
     view::JumpProgressFactory m_factory;
     std::unique_ptr<view::JumpProgressView> m_progress;
+    int m_jumpStep = 100;
 };
 
 } // namespace lifegame::controller

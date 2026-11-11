@@ -1,53 +1,83 @@
 #include "domain/history.h"
 
 #include <algorithm>
+#include <new>
 
 namespace lifegame::domain
 {
+
+namespace
+{
+
+std::shared_ptr<const PackedGrid> packBoard(const Grid& board)
+{
+    auto packed = std::shared_ptr<const PackedGrid>(new (std::nothrow) PackedGrid(board));
+    if (!packed || !packed->valid())
+    {
+        return {};
+    }
+    return packed;
+}
+
+} // namespace
 
 History::History(int interval)
     : m_interval(std::max(1, interval))
 {
 }
 
-void History::reset(int generation, std::shared_ptr<const Grid> board)
+bool History::reset(int generation, const std::shared_ptr<const Grid>& board)
 {
     m_epoch = generation;
     m_snapshots.clear();
-    if (board)
+    if (!board)
     {
-        m_snapshots.push_back({generation, std::make_shared<const PackedGrid>(*board)});
+        return true;
     }
+
+    std::shared_ptr<const PackedGrid> packed = packBoard(*board);
+    if (!packed)
+    {
+        return false;
+    }
+    m_snapshots.push_back({generation, std::move(packed)});
+    return true;
 }
 
-void History::record(int generation, std::shared_ptr<const Grid> board)
+bool History::record(int generation, const std::shared_ptr<const Grid>& board)
 {
     if (!board)
     {
-        return;
+        return true;
     }
-    recordPacked(generation, std::make_shared<const PackedGrid>(*board));
+    std::shared_ptr<const PackedGrid> packed = packBoard(*board);
+    if (!packed)
+    {
+        return false;
+    }
+    return recordPacked(generation, std::move(packed));
 }
 
-void History::recordPacked(int generation, std::shared_ptr<const PackedGrid> board)
+bool History::recordPacked(int generation, std::shared_ptr<const PackedGrid> board)
 {
-    if (!board)
+    if (!board || !board->valid())
     {
-        return;
+        return false;
     }
     if (m_snapshots.empty())
     {
         m_epoch = generation;
         m_snapshots.push_back({generation, std::move(board)});
-        return;
+        return true;
     }
     if (!shouldRecord(generation))
     {
-        return;
+        return true;
     }
 
     m_snapshots.push_back({generation, std::move(board)});
     trim();
+    return true;
 }
 
 bool History::shouldRecord(int generation) const

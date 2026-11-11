@@ -11,6 +11,10 @@ set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 QMAKE=${QMAKE:-qmake6}
+# 额外 qmake 参数，例如 ASan CI：
+#   QMAKE_ARGS='QMAKE_CXXFLAGS+=-fsanitize=address QMAKE_LFLAGS+=-fsanitize=address'
+QMAKE_ARGS=${QMAKE_ARGS:-}
+JOBS=${JOBS:-6}
 FILTER=${1:-}
 OUT="$ROOT/build/tests"
 STATUS=0
@@ -27,7 +31,8 @@ for pro in "$ROOT"/tests/*_tests.pro; do
     dir="$OUT/$name"
     printf '=== %s ===\n' "$name"
     mkdir -p "$dir" || exit 1
-    if ! (cd "$dir" && "$QMAKE" "$pro" && make -j"$(nproc)"); then
+    # QMAKE_ARGS is intentionally word-split so callers can pass several flags.
+    if ! (cd "$dir" && "$QMAKE" "$pro" $QMAKE_ARGS && make -j"$JOBS"); then
         printf '构建失败: %s\n' "$name"
         STATUS=1
         continue

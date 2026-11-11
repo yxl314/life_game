@@ -353,6 +353,9 @@ void testPatternLibrary()
     const auto padded = lifegame::domain::Pattern::fromAscii("padded", {"O", "OOO"});
     CHECK(padded.width() == 3);
     CHECK(padded.height() == 2);
+
+    CHECK(!lifegame::domain::Pattern::fromCells("bad", 2, 2, {1}).has_value());
+    CHECK(lifegame::domain::Pattern::fromCells("ok", 2, 2, {1, 0, 0, 1}).has_value());
     CHECK(padded.alive(0, 0));
     CHECK(!padded.alive(0, 1));
     CHECK(padded.population() == 4);
@@ -367,13 +370,18 @@ void testPatternInvariant()
 {
     using lifegame::domain::Pattern;
 
-    const Pattern broken("broken", 10, 10, std::vector<lifegame::domain::Cell>(1, 1));
-    CHECK(!broken.isConsistent());
-    CHECK(!broken.alive(9, 9)); // must not read out of bounds
+    const auto broken =
+        Pattern::fromCells("broken", 10, 10, std::vector<lifegame::domain::Cell>(1, 1));
+    CHECK(!broken.has_value());
 
-    const Pattern consistent("consistent", 10, 10, std::vector<lifegame::domain::Cell>(100, 1));
-    CHECK(consistent.isConsistent());
-    CHECK(consistent.alive(9, 9));
+    const auto consistent =
+        Pattern::fromCells("consistent", 10, 10, std::vector<lifegame::domain::Cell>(100, 1));
+    CHECK(consistent.has_value());
+    if (consistent)
+    {
+        CHECK(consistent->isConsistent());
+        CHECK(consistent->alive(9, 9));
+    }
 }
 
 void testRleDecode()

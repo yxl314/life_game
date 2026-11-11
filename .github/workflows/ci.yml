@@ -2,38 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [main, refactor/textbook-mvc]
+    branches: [main]
   pull_request:
 
 jobs:
   build-and-test:
-    name: Build and test (Qt 5.15, GCC)
+    name: Build and test (Qt 6, GCC)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build g++ python3 \
-            qtbase5-dev qtchooser qt5-qmake
-
-      - name: Configure
-        run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DLIFEGAME_BUILD_TESTS=ON
-          -DLIFEGAME_WARNINGS_AS_ERRORS=ON
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          cache: true
 
       - name: Build
-        run: cmake --build build --parallel 8
+        run: |
+          mkdir -p build/ci
+          cd build/ci
+          qmake6 ../../life_game.pro
+          make -j6
 
       - name: Architecture gate
         run: python3 tools/check_layering.py .
 
       - name: Tests
-        run: ctest --test-dir build --output-on-failure
+        run: ./tests/run_all.sh
 
       - name: Collect UI screenshot
         if: always()
@@ -53,26 +49,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build g++ python3 \
-            qtbase5-dev qtchooser qt5-qmake
-
-      - name: Configure
-        run: >
-          cmake -S . -B build-asan -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DLIFEGAME_BUILD_TESTS=ON
-          -DLIFEGAME_WARNINGS_AS_ERRORS=ON
-          -DLIFEGAME_ENABLE_SANITIZERS=ON
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          cache: true
 
       - name: Build
-        run: cmake --build build-asan --parallel 8
+        run: |
+          mkdir -p build/asan
+          cd build/asan
+          qmake6 ../../life_game.pro \
+            "QMAKE_CXXFLAGS+=-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+            "QMAKE_LFLAGS+=-fsanitize=address,undefined"
+          make -j6
 
       - name: Sanitized tests
         env:
           ASAN_OPTIONS: detect_leaks=0
           UBSAN_OPTIONS: print_stacktrace=1
-        run: ctest --test-dir build-asan --output-on-failure
+          QMAKE_ARGS: >-
+            QMAKE_CXXFLAGS+=-fsanitize=address,undefined
+            QMAKE_CXXFLAGS+=-fno-omit-frame-pointer
+            QMAKE_CXXFLAGS+=-g
+            QMAKE_LFLAGS+=-fsanitize=address,undefined
+        run: ./tests/run_all.sh

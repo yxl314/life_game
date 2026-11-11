@@ -20,8 +20,9 @@ namespace lifegame::controller
 BoardPresenter::BoardPresenter(model::LifeModel* model,
                                view::BoardView* view,
                                view::ControlPanel* panel,
+                               view::FrameTimingSource* timing,
                                QObject* parent)
-    : QObject(parent), m_model(model), m_view(view), m_panel(panel)
+    : QObject(parent), m_model(model), m_view(view), m_panel(panel), m_timing(timing)
 {
     refreshScreenRate();
 
@@ -131,7 +132,7 @@ bool BoardPresenter::needsCoalescing() const
     }
 
     const double frameBudgetMs = 1000.0 / static_cast<double>(std::max(1, m_screenRefresh));
-    const double paintMs = m_view->lastPaintDurationMs();
+    const double paintMs = m_timing != nullptr ? m_timing->lastPaintDurationMs() : 0.0;
     return m_generationRate > m_screenRefresh || (paintMs > 0.0 && paintMs > frameBudgetMs);
 }
 
@@ -168,7 +169,7 @@ void BoardPresenter::updateNow()
     panel.width = m_model->width();
     panel.height = m_model->height();
     panel.ruleNotation = QString::fromStdString(m_model->rule().notation());
-    panel.boundaryIndex = m_model->boundary() == domain::Boundary::Wrap ? 1 : 0;
+    panel.boundary = m_model->boundary();
     panel.oldestGeneration = m_model->oldestGeneration();
     panel.running = m_model->isRunning();
     m_panel->applyState(panel);

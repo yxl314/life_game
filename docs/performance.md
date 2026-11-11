@@ -90,7 +90,7 @@
 
 ## 5. 界面刷新：高代速下的绘制
 
-大棋盘运行时，`BoardController` 读取 `QScreen::refreshRate()`；屏幕刷新率 ≥ 当前代速时
+大棋盘运行时，`BoardPresenter` 读取 `QScreen::refreshRate()`；屏幕刷新率 ≥ 当前代速时
 逐代立即刷新，只有屏幕刷新率不足时才按刷新率合并。模拟仍按 0–120 代/秒推进。
 小棋盘保持逐代立即刷新。
 

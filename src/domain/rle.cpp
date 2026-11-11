@@ -421,7 +421,13 @@ RleDecodeResult decodeRle(std::string_view text)
                 rows[static_cast<std::size_t>(r)][static_cast<std::size_t>(c)];
         }
     }
-    document.pattern = Pattern("rle", width, height, std::move(cells));
+    std::optional<Pattern> pattern =
+        Pattern::fromCells("rle", width, height, std::move(cells));
+    if (!pattern.has_value())
+    {
+        return {std::nullopt, makeError(RleError::InvalidHeader, text, 0)};
+    }
+    document.pattern = std::move(*pattern);
 
     return {std::move(document), {}};
 }

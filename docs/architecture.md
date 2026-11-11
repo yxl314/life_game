@@ -62,8 +62,8 @@ LIFEGAME_MAIN_SOURCES  → 只有主程序用
 
 `tools/check_layering.py` 会拒绝 View/Service 对 `model/` 的 include，也会检查
 `src/`/`..` 绕过、Domain/Model 的 Qt/中文污染、源文件是否列入 `life_game.pri`、以及
-`target_link_libraries` 的方向。`layering_selftest` 用负向 fixture 证明门禁会失败，而不是
-只会在正确代码上打印 OK。
+`LIFEGAME_*_SOURCES/HEADERS` 分组与文件所在层是否一致。`layering_selftest` 用负向
+fixture 证明门禁会失败，而不是只会在正确代码上打印 OK。
 
 ## 3. 各层职责
 
@@ -103,12 +103,12 @@ LIFEGAME_MAIN_SOURCES  → 只有主程序用
 ### View
 
 - `BoardView`：自绘棋盘、缩放/平移、导出图像；通过
-  `setBoard(const domain::Grid*)`、`setPopulation(int)`、`setRunning(bool)`、`refresh()`
-  接收状态；不连接 Model 信号、不持有 `LifeModel*`。
-- `ControlPanel`：侧边面板；通过 `setStats()`、`setRunning()`、`setBoardSize()`、
-  `setRuleNotation()`、`setBoundaryIndex()`、`setOldestGeneration()` 接收显示状态；
-  只发出 `playPauseRequested`、`clearRequested`、`resizeRequested` 等意图信号。
-- `SettingsDialog`：只编辑 `domain::AppSettings` 的三个字段，并保留未编辑字段。
+  `applyFrame(const BoardFrame&)` 一次性接收棋盘/人口/运行态；不连接 Model 信号、
+  不持有 `LifeModel*`，也没有分离的 board/population/running setter。
+- `ControlPanel`：侧边面板；通过 `applyState(const PanelState&)` 接收完整显示状态，
+  少量 granular setter 只用于控制器设置单项输入；只发出 `playPauseRequested`、
+  `clearRequested`、`resizeRequested` 等意图信号。
+- `SettingsDialog`：只编辑 `shared::AppSettings` 的三个字段，并保留未编辑字段。
 - `JumpProgressDialog`：实现 `JumpProgressView`；程序化关闭时先断开取消回调，
   避免 Controller/Model 销毁顺序造成的 use-after-free。
 - `MessageBoxConfirmSink`、`ConfirmSink`、`MessageSink`：Controller 可替换的输出接口。
@@ -118,18 +118,24 @@ LIFEGAME_MAIN_SOURCES  → 只有主程序用
 
 | Controller | 职责 |
 |---|---|
-| `BoardController` | 鼠标/图案输入、清空/随机/尺寸/网格等命令 |
-| `BoardPresenter` | Model→View 推送、屏幕刷新率与帧合并、原子 ViewState |
-| `SimulationController` | 播放/暂停/单步/速度、定时器、停滞与后台失败提示 |
-| `JumpController` | 回退/快进、进度视图、取消 |
-| `FileController` | 打开/保存 RLE、导出 PNG、错误弹窗 |
+| `BoardController` | 鼠标/图案输入、清空/随机/尺寸/网格/缩放命令；持有密度、尺寸粒度和网格输入状态 |
+| `BoardPresenter` | Model→View 推送、屏幕刷新率与帧合并、原子 ViewState；只通过 `FrameTimingSource` 读取绘制耗时 |
+| `SimulationController` | 播放/暂停/单步/速度、定时器、停滞与后台失败提示；持有规范速度状态 |
+| `JumpController` | 回退/快进、进度视图、取消；持有规范跳转粒度 |
+| `FileController` | 打开/保存 RLE、导出 PNG、错误弹窗；通过 `BoardImageSource` 取图 |
 | `ConfigurationController` | 规则/边界命令；把规则/边界推送给 `ControlPanel` 和菜单 ActionGroup |
-| `SessionController` | 启动恢复、设置应用、退出保存；只负责会话生命周期与提示 |
+| `SessionController` | 启动恢复、设置应用、退出保存；只通过 `SessionSettingsPort` 访问输入状态 |
+| `ControllerSettingsBridge` | 组合适配器：在 `SessionSettingsPort` 与具体 Controller 之间转发 `AppSettings` |
 | `SessionService` | 无 UI 的会话读写（Model + SettingsStore） |
 | `SettingsController` | 设置对话框输入与应用 |
 
 Controller 是唯一同时持有可写 `LifeModel*` 和具体 View 指针的层（App 组合根除外）。
 `MainWindow` 只创建对象、注入依赖、连接菜单；不直接调用 Model 命令。
+
+输入状态（速度、跳转粒度、密度、尺寸粒度、网格开关）由 Controller 持有，`ControlPanel`
+只负责显示和发出带值意图信号。`SessionController` 不直接认识具体 Controller，而是通过
+`SessionSettingsPort` 的 `apply/capture` 交换完整 `AppSettings`；`ControllerSettingsBridge`
+在组合层完成适配。
 
 ### App
 
@@ -147,8 +153,9 @@ BoardView::cellPressed(row, col)
   → LifeModel::setCell(row, col, !alive)
   → LifeModel::boardChanged / statusChanged
   → BoardController（订阅者）
-  → BoardView::setBoard(&model.board()) / setPopulation()
-  → ControlPanel::setStats(stats)
+  → BoardPresenter::updateNow()
+  → BoardView::applyFrame({&model.board(), stats.population, running})
+  → ControlPanel::applyState({stats, ...})
 ```
 
 View 不知道 `LifeModel`；它只收到 `const domain::Grid*` 和值对象。
@@ -185,7 +192,8 @@ FileController::openRle()
   放进 `BoardFrame`，`BoardView::applyFrame()` 一次性应用；View 不复制棋盘。
 - `BoardView::applyFrame()` 在棋盘对象/尺寸变化时重置缩放和平移；平时只 update。
 - `shared::LifeStats`、`shared::AppSettings` 是按值传递的小型值对象，允许拷贝。
-- 棋盘尺寸变化会替换 Model 的 `Grid` 对象；Controller 随后调用 `setBoard()` 更新指针。
+- 棋盘尺寸变化会替换 Model 的 `Grid` 对象；BoardPresenter 下一帧通过 `applyFrame()`
+  更新指针，View 不缓存网格内容。
 - Model 的 `stats()` 是 O(1) 缓存；View 不逐帧扫描棋盘。
 
 ### 5.1 大棋盘（宽度 1500 × 高度 1000）

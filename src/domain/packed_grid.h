@@ -7,7 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
+#include <memory>
 
 namespace lifegame::domain
 {
@@ -20,12 +20,19 @@ class Grid;
  * Only history snapshots use this form: the live board and the simulation
  * pipeline stay byte-per-cell for cache-friendly neighbour reads. Packing is
  * done once per snapshot; unpacking happens only when a rewind starts.
+ *
+ * Storage is allocated with `new (std::nothrow)` so snapshot failures can be
+ * reported as `OutOfMemory` instead of terminating the process.
  */
 class PackedGrid
 {
 public:
-    /// @brief Construct an empty snapshot.
+    /// @brief Construct an empty, valid snapshot.
     PackedGrid() = default;
+    PackedGrid(const PackedGrid& other);
+    PackedGrid& operator=(const PackedGrid& other);
+    PackedGrid(PackedGrid&&) noexcept = default;
+    PackedGrid& operator=(PackedGrid&&) noexcept = default;
 
     /**
      * @brief Pack a live board.
@@ -33,7 +40,7 @@ public:
      */
     explicit PackedGrid(const Grid& board);
 
-    /// @return Unpacked live board.
+    /// @return Unpacked live board; empty when the snapshot is invalid.
     Grid unpack() const;
 
     /// @return Board width in cells.
@@ -57,19 +64,27 @@ public:
     /// @return Bytes used by the packed word storage.
     std::size_t byteSize() const noexcept
     {
-        return m_words.size() * sizeof(std::uint64_t);
+        return m_wordCount * sizeof(std::uint64_t);
     }
 
     /// @return True when no packed words are stored.
     bool empty() const noexcept
     {
-        return m_words.empty();
+        return m_wordCount == 0;
+    }
+
+    /// @return True when storage allocation and packing succeeded.
+    bool valid() const noexcept
+    {
+        return m_valid;
     }
 
 private:
     int m_width = 0;
     int m_height = 0;
-    std::vector<std::uint64_t> m_words;
+    std::size_t m_wordCount = 0;
+    std::unique_ptr<std::uint64_t[]> m_words;
+    bool m_valid = true;
 };
 
 } // namespace lifegame::domain

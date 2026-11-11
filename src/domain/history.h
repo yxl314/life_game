@@ -47,22 +47,25 @@ public:
      * @brief Discard everything and start a new epoch.
      * @param generation Epoch generation.
      * @param board Optional anchor board.
+     * @return False when packing the anchor board failed (OOM).
      */
-    void reset(int generation, std::shared_ptr<const Grid> board);
+    bool reset(int generation, const std::shared_ptr<const Grid>& board);
 
     /**
      * @brief Record a snapshot when the generation is aligned and newer.
      * @param generation Generation represented by `board`.
      * @param board Board to pack; ignored when null.
+     * @return False when packing failed (OOM).
      */
-    void record(int generation, std::shared_ptr<const Grid> board);
+    bool record(int generation, const std::shared_ptr<const Grid>& board);
 
     /**
      * @brief Record an already packed snapshot.
      * @param generation Generation represented by `board`.
      * @param board Packed board; ignored when null.
+     * @return False when the snapshot is invalid (OOM packing failed).
      */
-    void recordPacked(int generation, std::shared_ptr<const PackedGrid> board);
+    bool recordPacked(int generation, std::shared_ptr<const PackedGrid> board);
 
     /**
      * @brief Check whether record() would store something.

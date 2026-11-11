@@ -11,6 +11,19 @@ Pattern::Pattern(std::string id, int width, int height, std::vector<Cell> cells)
 {
 }
 
+std::optional<Pattern> Pattern::fromCells(std::string id,
+                                          int width,
+                                          int height,
+                                          std::vector<Cell> cells)
+{
+    if (width < 0 || height < 0 ||
+        cells.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height))
+    {
+        return std::nullopt;
+    }
+    return Pattern(std::move(id), width, height, std::move(cells));
+}
+
 bool Pattern::alive(int row, int col) const
 {
     if (row < 0 || row >= m_height || col < 0 || col >= m_width)

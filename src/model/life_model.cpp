@@ -168,11 +168,19 @@ CommandResult LifeModel::toggleRunning()
     return setRunning(!m_running);
 }
 
-bool LifeModel::setCell(int row, int col, bool alive)
+CommandResult LifeModel::setCell(int row, int col, bool alive)
 {
-    if (!canMutate() || !m_board.inBounds(row, col) || m_board.cell(row, col) == alive)
+    if (!canMutate())
     {
-        return false;
+        return CommandResult::Busy;
+    }
+    if (!m_board.inBounds(row, col))
+    {
+        return CommandResult::OutOfBounds;
+    }
+    if (m_board.cell(row, col) == alive)
+    {
+        return CommandResult::NoChange;
     }
 
     pauseForEdit();
@@ -181,48 +189,60 @@ bool LifeModel::setCell(int row, int col, bool alive)
     invalidateHistoryFrom(m_generation);
     emit boardChanged();
     emit statusChanged(stats());
-    return true;
+    return CommandResult::Success;
 }
 
-bool LifeModel::toggleCell(int row, int col)
+CommandResult LifeModel::toggleCell(int row, int col)
 {
-    if (!canMutate() || !m_board.inBounds(row, col))
+    if (!canMutate())
     {
-        return false;
+        return CommandResult::Busy;
+    }
+    if (!m_board.inBounds(row, col))
+    {
+        return CommandResult::OutOfBounds;
     }
 
     pauseForEdit();
     const std::optional<bool> state = m_board.toggleCell(row, col);
     if (!state.has_value())
     {
-        return false;
+        return CommandResult::OutOfBounds;
     }
     m_population += *state ? 1 : -1;
     invalidateHistoryFrom(m_generation);
     emit boardChanged();
     emit statusChanged(stats());
-    return true;
+    return CommandResult::Success;
 }
 
-bool LifeModel::setCells(const std::vector<std::pair<int, int>>& cells, bool alive)
+CommandResult LifeModel::setCells(const std::vector<std::pair<int, int>>& cells, bool alive)
 {
-    if (!canMutate() || cells.empty())
+    if (!canMutate())
     {
-        return false;
+        return CommandResult::Busy;
+    }
+    if (cells.empty())
+    {
+        return CommandResult::NoChange;
     }
 
     bool wouldChange = false;
+    bool invalid = false;
     for (const auto& cell : cells)
     {
-        if (m_board.inBounds(cell.first, cell.second) && m_board.cell(cell.first, cell.second) != alive)
+        if (!m_board.inBounds(cell.first, cell.second))
+        {
+            invalid = true;
+        }
+        else if (m_board.cell(cell.first, cell.second) != alive)
         {
             wouldChange = true;
-            break;
         }
     }
     if (!wouldChange)
     {
-        return false;
+        return invalid ? CommandResult::OutOfBounds : CommandResult::NoChange;
     }
 
     pauseForEdit();
@@ -234,7 +254,7 @@ bool LifeModel::setCells(const std::vector<std::pair<int, int>>& cells, bool ali
     invalidateHistoryFrom(m_generation);
     emit boardChanged();
     emit statusChanged(stats());
-    return true;
+    return CommandResult::Success;
 }
 
 CommandResult LifeModel::placePattern(const domain::Pattern& pattern, int centerRow, int centerCol)
@@ -326,7 +346,8 @@ CommandResult LifeModel::randomize(int densityPercent)
         return CommandResult::Busy;
     }
 
-    const int density = std::clamp(densityPercent, domain::kMinRandomDensity, domain::kMaxRandomDensity);
+    const int density =
+        std::clamp(densityPercent, shared::limits::kDensityMin, shared::limits::kDensityMax);
     const auto ticks = std::chrono::high_resolution_clock::now().time_since_epoch().count();
     const auto seed = static_cast<std::uint32_t>(static_cast<std::uint64_t>(ticks) ^
                                                  reinterpret_cast<std::uintptr_t>(this));
@@ -550,8 +571,9 @@ CommandResult LifeModel::step()
     m_pendingStepId = 0;
 
     domain::Grid next;
-    domain::Grid::computeNext(m_board, &next, m_rule, m_boundary);
-    applyStep(std::move(next));
+    domain::GridStats stats;
+    domain::Grid::computeNext(m_board, &next, m_rule, m_boundary, &stats);
+    applyStep(std::move(next), stats);
     qCDebug(lcModel) << "manual step generation" << m_generation;
     return CommandResult::Success;
 }
@@ -599,7 +621,9 @@ void LifeModel::onStepReady(quint64 requestId)
         return;
     }
 
-    applyStep(m_engine.takeResult());
+    domain::GridStats stats;
+    domain::Grid next = m_engine.takeResult(&stats);
+    applyStep(std::move(next), stats);
 }
 
 void LifeModel::onStepFailed(CommandResult reason)
@@ -614,12 +638,12 @@ void LifeModel::onStepFailed(CommandResult reason)
     emit stepFailed(reason);
 }
 
-void LifeModel::applyStep(domain::Grid&& next)
+void LifeModel::applyStep(domain::Grid&& next, const domain::GridStats& gridStats)
 {
-    const bool unchanged = next.equals(m_board);
+    const bool unchanged = !gridStats.changed;
     m_board = std::move(next);
     ++m_generation;
-    m_population = m_board.population();
+    m_population = gridStats.population;
     recordSnapshot();
 
     emit boardChanged();
@@ -777,7 +801,11 @@ void LifeModel::onJumpFinished()
     {
         for (const JumpSnapshot& snapshot : outcome.snapshots)
         {
-            m_history.recordPacked(snapshot.generation, snapshot.packedBoard);
+            if (!m_history.recordPacked(snapshot.generation, snapshot.packedBoard))
+            {
+                qCWarning(lcModel) << "jump snapshot allocation failed generation"
+                                   << snapshot.generation;
+            }
         }
     }
 
@@ -794,7 +822,10 @@ void LifeModel::onJumpFinished()
 
 void LifeModel::resetHistory()
 {
-    m_history.reset(m_generation, makeSnapshot(m_board));
+    if (!m_history.reset(m_generation, makeSnapshot(m_board)))
+    {
+        qCWarning(lcModel) << "history anchor allocation failed generation" << m_generation;
+    }
 }
 
 void LifeModel::recordSnapshot()
@@ -804,9 +835,9 @@ void LifeModel::recordSnapshot()
         return;
     }
     std::shared_ptr<const domain::Grid> snapshot = makeSnapshot(m_board);
-    if (snapshot)
+    if (snapshot && !m_history.record(m_generation, snapshot))
     {
-        m_history.record(m_generation, std::move(snapshot));
+        qCWarning(lcModel) << "history snapshot allocation failed generation" << m_generation;
     }
 }
 

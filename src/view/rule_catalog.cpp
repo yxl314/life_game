@@ -61,19 +61,6 @@ QStringList RuleCatalog::names() const
     return result;
 }
 
-int RuleCatalog::indexOf(const domain::Rule& rule) const
-{
-    const QString notation = QString::fromStdString(rule.notation());
-    for (std::size_t i = 0; i < m_presets.size(); ++i)
-    {
-        if (m_presets[i].notation == notation)
-        {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
-}
-
 QString RuleCatalog::notationAt(int index) const
 {
     if (index < 0 || index >= static_cast<int>(m_presets.size()))

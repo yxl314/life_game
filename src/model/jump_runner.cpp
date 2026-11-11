@@ -52,7 +52,13 @@ JumpOutcome runJump(const JumpRequest& request) noexcept
         const int done = generation - request.startGeneration;
         if (request.forward && (generation - request.epoch) % request.interval == 0)
         {
-            auto snapshot = std::make_shared<const domain::PackedGrid>(*current);
+            auto snapshot = std::shared_ptr<const domain::PackedGrid>(
+                new (std::nothrow) domain::PackedGrid(*current));
+            if (!snapshot || !snapshot->valid())
+            {
+                outcome.error = CommandResult::OutOfMemory;
+                return outcome;
+            }
             outcome.snapshots.push_back({generation, std::move(snapshot)});
             if (outcome.snapshots.size() >
                 static_cast<std::size_t>(domain::History::kMaxSnapshots))

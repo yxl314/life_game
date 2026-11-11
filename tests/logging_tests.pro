@@ -9,7 +9,7 @@
 #
 # 界面相关用例需要离屏平台插件；tests/run_all.sh 会统一导出。
 
-QT += testlib core gui widgets concurrent
+QT += testlib core
 
 TEMPLATE = app
 TARGET   = logging_tests
@@ -19,26 +19,15 @@ CONFIG  -= app_bundle
 LIFEGAME_ROOT = $$PWD/..
 include($$LIFEGAME_ROOT/life_game.pri)
 
-HEADERS += $$LIFEGAME_SHARED_HEADERS
+# 日志测试只依赖 app/logging 和 model/model_log，不链接其它层。
+HEADERS += \
+    $$LIFEGAME_ROOT/src/app/logging.h \
+    $$LIFEGAME_ROOT/src/model/model_log.h
 
-HEADERS += = \
-    $$LIFEGAME_APP_HEADERS \
-    $$LIFEGAME_CONTROLLER_HEADERS \
-    $$LIFEGAME_VIEW_HEADERS \
-    $$LIFEGAME_SERVICE_HEADERS \
-    $$LIFEGAME_MODEL_HEADERS \
-    $$LIFEGAME_DOMAIN_HEADERS
-
-SOURCES = \
-    $$LIFEGAME_APP_SOURCES \
-    $$LIFEGAME_CONTROLLER_SOURCES \
-    $$LIFEGAME_VIEW_SOURCES \
-    $$LIFEGAME_SERVICE_SOURCES \
-    $$LIFEGAME_MODEL_SOURCES \
-    $$LIFEGAME_DOMAIN_SOURCES
-RESOURCES += $$LIFEGAME_VIEW_RESOURCES
-
-SOURCES += $$PWD/logging_tests.cpp
+SOURCES += \
+    $$LIFEGAME_ROOT/src/app/logging.cpp \
+    $$LIFEGAME_ROOT/src/model/model_log.cpp \
+    $$PWD/logging_tests.cpp
 
 DESTDIR     = $$OUT_PWD/bin
 OBJECTS_DIR = $$OUT_PWD/obj

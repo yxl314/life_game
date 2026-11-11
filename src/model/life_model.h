@@ -99,18 +99,18 @@ public:
     /// @param row Row index.
     /// @param col Column index.
     /// @param alive New state.
-    /// @return True when the board changed.
-    bool setCell(int row, int col, bool alive);
+    /// @return Success, NoChange, OutOfBounds or Busy.
+    CommandResult setCell(int row, int col, bool alive);
 
     /// @param row Row index.
     /// @param col Column index.
-    /// @return True when the board changed (mutating toggle happened).
-    bool toggleCell(int row, int col);
+    /// @return Success, NoChange, OutOfBounds or Busy.
+    CommandResult toggleCell(int row, int col);
 
     /// @param cells Coordinates to paint.
     /// @param alive Desired state.
-    /// @return True when at least one cell changed.
-    bool setCells(const std::vector<std::pair<int, int>>& cells, bool alive);
+    /// @return Success, NoChange, OutOfBounds or Busy.
+    CommandResult setCells(const std::vector<std::pair<int, int>>& cells, bool alive);
 
     /// @param pattern Pattern to place.
     /// @param centerRow Center row.
@@ -235,7 +235,7 @@ private:
     shared::LifeStats computeStats() const;
     void notifyBoardChanged();
     void notifyStatusChanged();
-    void applyStep(domain::Grid&& next);
+    void applyStep(domain::Grid&& next, const domain::GridStats& gridStats);
     CommandResult replaceBoard(std::unique_ptr<domain::Grid> board, int generation);
     bool canMutate() const;
 

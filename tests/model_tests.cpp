@@ -79,23 +79,23 @@ void ModelTests::setCellUpdatesStatsAndSignals()
     QSignalSpy boardSpy(&model, &lifegame::model::LifeModel::boardChanged);
     QSignalSpy statusSpy(&model, &lifegame::model::LifeModel::statusChanged);
 
-    QVERIFY(model.setCell(10, 10, true));
+    VERIFY_OK(model.setCell(10, 10, true));
     QCOMPARE(model.stats().population, 1);
     QCOMPARE(model.stats().density, 0.3); // 1 / 400 * 100 = 0.25 -> 0.3
     QCOMPARE(boardSpy.count(), 1);
     QCOMPARE(statusSpy.count(), 1);
 
     // Same value is a no-op and emits nothing.
-    QVERIFY(!model.setCell(10, 10, true));
+    QCOMPARE(model.setCell(10, 10, true), lifegame::model::CommandResult::NoChange);
     QCOMPARE(boardSpy.count(), 1);
 
     // Out of bounds is rejected.
-    QVERIFY(!model.setCell(-1, 0, true));
-    QVERIFY(!model.setCell(20, 20, true));
+    QCOMPARE(model.setCell(-1, 0, true), lifegame::model::CommandResult::OutOfBounds);
+    QCOMPARE(model.setCell(20, 20, true), lifegame::model::CommandResult::OutOfBounds);
 
-    QVERIFY(model.toggleCell(10, 10)); // mutation happened: alive -> dead
+    VERIFY_OK(model.toggleCell(10, 10)); // mutation happened: alive -> dead
     QCOMPARE(model.stats().population, 0);
-    QVERIFY(model.toggleCell(10, 10)); // mutation happened: dead -> alive
+    VERIFY_OK(model.toggleCell(10, 10)); // mutation happened: dead -> alive
     QCOMPARE(model.stats().population, 1);
 
     VERIFY_OK(model.clear());
@@ -107,12 +107,12 @@ void ModelTests::editingPausesSimulation()
 {
     lifegame::model::LifeModel model;
     VERIFY_OK(model.resizeBoard(20, 20));
-    QVERIFY(model.setCell(5, 5, true));
+    VERIFY_OK(model.setCell(5, 5, true));
     VERIFY_OK(model.setRunning(true));
     QCOMPARE(model.isRunning(), true);
 
     QSignalSpy runningSpy(&model, &lifegame::model::LifeModel::runningChanged);
-    QVERIFY(model.setCell(6, 6, true));
+    VERIFY_OK(model.setCell(6, 6, true));
     QCOMPARE(model.isRunning(), false);
     QCOMPARE(runningSpy.count(), 1);
 }
@@ -396,10 +396,6 @@ void ModelTests::commandResults()
     lifegame::domain::Pattern empty;
     QCOMPARE(model.placePattern(empty, 0, 0), CommandResult::InvalidPattern);
 
-    const lifegame::domain::Pattern inconsistent(
-        "inconsistent", 10, 10, std::vector<lifegame::domain::Cell>(1, 1));
-    QCOMPARE(model.placePattern(inconsistent, 0, 0), CommandResult::InvalidPattern);
-
     lifegame::domain::DecodedDocument invalidRule;
     invalidRule.pattern = lifegame::domain::Pattern::fromAscii("one", {"O"});
     invalidRule.rule = "not-a-rule";
@@ -410,7 +406,7 @@ void ModelTests::commandResults()
     QCOMPARE(model.loadDocument(tooLarge), CommandResult::TooLarge);
 
     QCOMPARE(model.clear(), CommandResult::Success);
-    QVERIFY(model.setCell(1, 1, true));
+    VERIFY_OK(model.setCell(1, 1, true));
     QCOMPARE(model.resizeBoard(20, 20), CommandResult::Success);
     QCOMPARE(model.stats().population, 0); // same-size Apply deliberately resets the board
 

@@ -17,7 +17,7 @@ namespace lifegame::app::logging
 namespace
 {
 
-constexpr qint64 kMaxLogBytes = 2 * 1024 * 1024;
+constexpr qint64 kMaxLogBytes = 2LL * 1024 * 1024;
 constexpr int kRetainedLogs = 3;
 
 QMutex g_mutex;
@@ -90,8 +90,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
         }
         if (g_mirror || !g_fileReady || type == QtFatalMsg)
         {
-            std::fwrite(line.constData(), 1, static_cast<std::size_t>(line.size()), stderr);
-            std::fflush(stderr);
+            (void)std::fwrite(line.constData(), 1, static_cast<std::size_t>(line.size()), stderr);
+            (void)std::fflush(stderr);
         }
     }
 
@@ -133,7 +133,7 @@ bool initialize(const Options& options)
     g_fileReady = g_file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text);
     if (!g_fileReady)
     {
-        std::fprintf(stderr, "lifegame: cannot open log file %s\n", path.toUtf8().constData());
+        (void)std::fprintf(stderr, "lifegame: cannot open log file %s\n", path.toUtf8().constData());
         g_mirror = true;
     }
 

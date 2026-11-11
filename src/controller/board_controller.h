@@ -6,6 +6,7 @@
  */
 
 #include <QObject>
+#include <QString>
 #include <QVector>
 
 #include "domain/pattern.h"
@@ -59,6 +60,18 @@ public:
     /// @return Current grid visibility.
     bool gridVisible() const;
 
+    /// @return Current random-fill density percentage.
+    int randomDensity() const;
+
+    /// @param density Random-fill density percentage; clamped to the settings range.
+    void setRandomDensity(int density);
+
+    /// @return Board-size spinner step.
+    int sizeStep() const;
+
+    /// @param step Board-size spinner step; clamped to the settings range.
+    void setSizeStep(int step);
+
 public slots:
     /// @param visible New grid visibility.
     void setGridVisible(bool visible);
@@ -68,8 +81,14 @@ public slots:
     void randomizeBoard();
     /// @brief Load the built-in demo pattern.
     void loadDemo();
-    /// @param patternId Pattern index, or -1 for brush.
-    void selectPattern(int patternId);
+    /// @brief Zoom the passive board view in.
+    void zoomIn();
+    /// @brief Zoom the passive board view out.
+    void zoomOut();
+    /// @brief Reset board zoom and pan.
+    void resetZoom();
+    /// @param patternId Stable pattern ID; empty selects the brush.
+    void selectPattern(const QString& patternId);
     /// @param width New width.
     /// @param height New height.
     void resizeBoard(int width, int height);
@@ -100,6 +119,8 @@ private:
     domain::Pattern m_stamp;
 
     bool m_gridVisible = true;
+    int m_density = 30;
+    int m_sizeStep = 5;
     QAction* m_gridAction = nullptr;
 };
 

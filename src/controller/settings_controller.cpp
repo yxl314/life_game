@@ -38,6 +38,7 @@ void SettingsController::openSettings()
         return;
     }
 
+    m_session->refreshSettings();
     view::SettingsDialog dialog(m_window);
     dialog.setValues(m_session->settings());
     if (dialog.exec() != QDialog::Accepted)
@@ -47,8 +48,7 @@ void SettingsController::openSettings()
     }
 
     m_session->applySettings(dialog.values());
-    m_session->save();
-    if (m_messages != nullptr)
+    if (m_session->save() == service::SettingsError::None && m_messages != nullptr)
     {
         m_messages->showMessage(tr("设置已保存。"), 3000);
     }

@@ -177,13 +177,19 @@ bool Grid::equals(const Grid& other) const
     }
 
     const int count = m_width * m_height;
-    return std::equal(m_cells.begin(),
-                      m_cells.begin() + static_cast<std::size_t>(count),
-                      other.m_cells.begin());
+    return std::equal(m_cells.begin(), m_cells.begin() + count, other.m_cells.begin());
 }
 
-void Grid::computeNext(const Grid& current, Grid* next, const Rule& rule, Boundary boundary)
+void Grid::computeNext(const Grid& current,
+                       Grid* next,
+                       const Rule& rule,
+                       Boundary boundary,
+                       GridStats* stats)
 {
+    if (stats != nullptr)
+    {
+        *stats = GridStats{};
+    }
     if (next == nullptr)
     {
         return;
@@ -198,7 +204,7 @@ void Grid::computeNext(const Grid& current, Grid* next, const Rule& rule, Bounda
     }
 
     next->resize(width, height);
-    computeRows(current, next, rule, boundary, 0, height);
+    computeRows(current, next, rule, boundary, 0, height, stats);
 }
 
 void Grid::computeRows(const Grid& current,
@@ -206,8 +212,13 @@ void Grid::computeRows(const Grid& current,
                        const Rule& rule,
                        Boundary boundary,
                        int rowBegin,
-                       int rowEnd)
+                       int rowEnd,
+                       GridStats* stats)
 {
+    if (stats != nullptr)
+    {
+        *stats = GridStats{};
+    }
     if (next == nullptr)
     {
         return;
@@ -233,6 +244,8 @@ void Grid::computeRows(const Grid& current,
 
     const Cell* source = current.data();
     Cell* destination = next->m_cells.data();
+    int population = 0;
+    bool changed = false;
 
     for (int row = begin; row < end; ++row)
     {
@@ -294,11 +307,22 @@ void Grid::computeRows(const Grid& current,
                 }
             }
 
-            const bool alive = source[rowOffset + col] != kDead;
-            destination[rowOffset + col] =
-                static_cast<Cell>((alive ? rule.survives(neighbours) : rule.births(neighbours)) ? kAlive
-                                                                                               : kDead);
+            const std::size_t cellIndex =
+                static_cast<std::size_t>(rowOffset) + static_cast<std::size_t>(col);
+            const Cell previous = source[cellIndex];
+            const bool alive = previous != kDead;
+            const bool nextAlive = alive ? rule.survives(neighbours) : rule.births(neighbours);
+            const Cell value = nextAlive ? kAlive : kDead;
+            destination[cellIndex] = value;
+            population += nextAlive ? 1 : 0;
+            changed = changed || value != previous;
         }
+    }
+
+    if (stats != nullptr)
+    {
+        stats->population = population;
+        stats->changed = changed;
     }
 }
 

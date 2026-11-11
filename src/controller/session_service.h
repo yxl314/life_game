@@ -30,18 +30,38 @@ class SettingsStore;
 namespace lifegame::controller
 {
 
+/// @brief Outcome of restoring persisted session data.
+enum class SessionRestoreStatus
+{
+    NoStoredBoard, ///< No board was persisted; settings may still be loaded.
+    Restored,      ///< Board and generation were restored.
+    PartialRestore,///< Board was restored, but the generation could not be applied.
+    DecodeFailed,  ///< Stored RLE was malformed.
+    LoadFailed     ///< Model rejected the decoded document or fallback allocation failed.
+};
+
 /// @brief Result of SessionService::restore().
 struct SessionRestoreResult
 {
     shared::AppSettings settings;              ///< Normalized settings.
     service::SettingsError error = service::SettingsError::None; ///< Settings error.
     QString detail;                            ///< Optional error detail.
-    bool restored = false;                     ///< Board restored successfully.
-    bool hadStoredBoard = false;               ///< State contained board RLE.
-    bool decodeFailed = false;                 ///< Stored RLE was malformed.
-    bool loadFailed = false;                   ///< Model rejected decoded document.
-    model::CommandResult loadResult = model::CommandResult::Success; ///< Model result.
+    SessionRestoreStatus status = SessionRestoreStatus::NoStoredBoard; ///< Restore outcome.
+    model::CommandResult modelResult = model::CommandResult::Success;  ///< Model failure detail.
     QByteArray windowGeometry;                 ///< Saved window geometry.
+
+    /// @return True when the persisted state contained a board payload.
+    bool hadStoredBoard() const noexcept
+    {
+        return status != SessionRestoreStatus::NoStoredBoard;
+    }
+
+    /// @return True when at least the board was restored.
+    bool restored() const noexcept
+    {
+        return status == SessionRestoreStatus::Restored ||
+               status == SessionRestoreStatus::PartialRestore;
+    }
 };
 
 /// @brief UI-free session persistence.

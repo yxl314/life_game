@@ -4,6 +4,10 @@ build-*/
 out/
 docs/doxygen/
 
+# cpp-audit / cxx_ci 检查产物
+reports/
+ci-logs/
+
 # Compiler / linker artifacts
 *.o
 *.obj

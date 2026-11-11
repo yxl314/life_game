@@ -8,6 +8,8 @@
 #include <QObject>
 #include <QString>
 
+#include "domain/boundary.h"
+
 class QActionGroup;
 
 namespace lifegame::model
@@ -47,8 +49,8 @@ public slots:
     void setRuleIndex(int index);
     /// @param notation B/S notation.
     void setRuleByNotation(const QString& notation);
-    /// @param index 0 = dead, 1 = wrap.
-    void setBoundaryIndex(int index);
+    /// @param boundary Boundary policy selected by the user.
+    void setBoundary(domain::Boundary boundary);
 
     /// @param group Checkable rule action group.
     void setRuleActionGroup(QActionGroup* group);

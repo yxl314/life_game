@@ -50,7 +50,8 @@ SimulationController::SimulationController(model::LifeModel* model,
 {
     m_timer = new QTimer(this);
     m_timer->setTimerType(Qt::PreciseTimer);
-    m_speed = std::clamp(panel->speed(), shared::limits::kSpeedMin, shared::limits::kSpeedMax);
+    m_speed = shared::limits::kDefaultSpeed;
+    m_panel->setSpeed(m_speed);
 
     connect(m_timer, &QTimer::timeout, this, &SimulationController::onTick);
     connect(m_panel, &view::ControlPanel::playPauseRequested, this, &SimulationController::toggleRunning);

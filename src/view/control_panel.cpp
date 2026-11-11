@@ -152,6 +152,8 @@ void ControlPanel::setupUi()
     connect(m_randomButton, &QPushButton::clicked, this, [this] {
         emit randomizeRequested(m_densitySpin->value());
     });
+    connect(m_densitySpin, QOverload<int>::of(&QSpinBox::valueChanged), this,
+            &ControlPanel::randomDensityChanged);
     randomRow->addWidget(m_randomButton, 1);
     randomRow->addWidget(m_densitySpin);
     root->addLayout(randomRow);
@@ -208,8 +210,9 @@ void ControlPanel::setupUi()
     m_jumpSpin->setKeyboardTracking(false);
     m_jumpSpin->setAccessibleName(tr("跳转代数"));
     m_jumpSpin->setToolTip(tr("一次回退或快进的代数"));
-    connect(m_jumpSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int) {
+    connect(m_jumpSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
         updateJumpState();
+        emit jumpStepChanged(value);
     });
 
     m_rewindButton = new QPushButton(QIcon(QStringLiteral(":/icons/rewind.svg")), tr("回退"), this);
@@ -250,7 +253,7 @@ void ControlPanel::setupUi()
     m_patternCombo->setAccessibleName(tr("图案"));
     m_patternCombo->setToolTip(tr("选择要放置的图案；选择画笔可回到直接绘制"));
     connect(m_patternCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
-        emit patternChanged(m_patternCombo->currentData().toInt());
+        emit patternChanged(m_patternCombo->currentData().toString());
     });
     patternLayout->addWidget(m_patternCombo);
 
@@ -299,7 +302,7 @@ void ControlPanel::setupUi()
     connect(m_boundaryCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
         if (!m_syncing)
         {
-            emit boundaryChanged(index);
+            emit boundaryChanged(index == 1 ? domain::Boundary::Wrap : domain::Boundary::Dead);
         }
     });
     boundaryColumn->addWidget(boundaryLabel);
@@ -366,7 +369,7 @@ void ControlPanel::applyState(const PanelState& state)
     setRunning(state.running);
     setBoardSize(state.width, state.height);
     setRuleNotation(state.ruleNotation);
-    setBoundaryIndex(state.boundaryIndex);
+    setBoundary(state.boundary);
     setOldestGeneration(state.oldestGeneration);
 }
 
@@ -385,8 +388,7 @@ void ControlPanel::setPatternOptions(const QVector<PatternOption>& options)
         m_patternCombo->addItem(option.text, option.id);
     }
 
-    const int index = m_patternCombo->findData(-1);
-    m_patternCombo->setCurrentIndex(index >= 0 ? index : 0);
+    m_patternCombo->setCurrentIndex(0);
 }
 
 void ControlPanel::setPatternDescription(const QString& text)
@@ -517,14 +519,15 @@ void ControlPanel::setRuleNotation(const QString& notation)
     syncRuleSelection();
 }
 
-void ControlPanel::setBoundaryIndex(int index)
+void ControlPanel::setBoundary(domain::Boundary boundary)
 {
-    const int next = index == 1 ? 1 : 0;
-    if (m_boundaryIndex == next && m_boundaryCombo->count() > 0)
+    const domain::Boundary next = boundary == domain::Boundary::Wrap ? domain::Boundary::Wrap
+                                                                    : domain::Boundary::Dead;
+    if (m_boundary == next && m_boundaryCombo->count() > 0)
     {
         return;
     }
-    m_boundaryIndex = next;
+    m_boundary = next;
     syncBoundarySelection();
 }
 
@@ -560,7 +563,7 @@ void ControlPanel::syncRuleSelection()
     if (index < 0)
     {
         names.append(tr("自定义 · %1").arg(m_ruleNotation));
-        index = names.size() - 1;
+        index = static_cast<int>(names.size()) - 1;
     }
 
     m_syncing = true;
@@ -580,7 +583,7 @@ void ControlPanel::syncBoundarySelection()
     {
         m_boundaryCombo->addItems({tr("死亡边界"), tr("环绕边界")});
     }
-    m_boundaryCombo->setCurrentIndex(m_boundaryIndex == 1 ? 1 : 0);
+    m_boundaryCombo->setCurrentIndex(m_boundary == domain::Boundary::Wrap ? 1 : 0);
 }
 
 void ControlPanel::updateJumpState()

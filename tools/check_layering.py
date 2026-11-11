@@ -11,10 +11,10 @@ The checker rejects:
   * path traversal, absolute paths and the non-canonical ``src/`` prefix,
   * Qt/UI headers in layers that must stay UI-free,
   * Chinese display text in domain/model,
-  * sources that are not listed in CMakeLists.txt,
-  * CMake target links that point the wrong way.
+  * sources that are not listed in life_game.pri,
+  * manifest groups that list a file under the wrong layer.
 
-Run directly or via CTest (test name: layering).
+Run directly or from tests/run_all.sh.
 """
 
 from __future__ import annotations
@@ -51,7 +51,19 @@ QT_FORBIDDEN = {
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]')
 QT_INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]Q[A-Za-z0-9_/]*[>"]')
 CJK_RE = re.compile(r'[\u4e00-\u9fff]')
-TARGET_RE = re.compile(r'target_link_libraries\s*\(\s*([A-Za-z0-9_]+)(.*?)\)\s*;?\s*', re.S)
+MANIFEST_GROUP_RE = re.compile(
+    r'^(LIFEGAME_(?:DOMAIN|SHARED|MODEL|SERVICE|VIEW|CONTROLLER|APP|MAIN))'
+    r'_(?:SOURCES|HEADERS)\s*=\s*(.*)$')
+MANIFEST_GROUP_LAYER = {
+    "LIFEGAME_DOMAIN": "domain",
+    "LIFEGAME_SHARED": "shared",
+    "LIFEGAME_MODEL": "model",
+    "LIFEGAME_SERVICE": "service",
+    "LIFEGAME_VIEW": "view",
+    "LIFEGAME_CONTROLLER": "controller",
+    "LIFEGAME_APP": "app",
+    "LIFEGAME_MAIN": "app",
+}
 
 
 def layer_of(path: Path, root: Path) -> str | None:
@@ -80,13 +92,61 @@ def normalize_include(target: str) -> str | None:
     return target
 
 
-def target_layer(name: str) -> str | None:
-    if name == "lifegame":
-        return "app"
-    if name.startswith("lifegame_"):
-        layer = name[len("lifegame_"):]
-        return layer if layer in LAYERS else None
-    return None
+def logical_lines(text: str):
+    """Yield manifest lines with backslash continuations joined."""
+    parts: list[str] = []
+    for raw in text.splitlines():
+        line = raw.split('#', 1)[0].rstrip()
+        if not line.strip():
+            continue
+        if line.endswith('\\'):
+            parts.append(line[:-1].strip())
+        else:
+            parts.append(line.strip())
+            yield ' '.join(parts)
+            parts = []
+    if parts:
+        yield ' '.join(parts)
+
+
+def check_manifest_groups(root: Path) -> list[str]:
+    """Ensure each LIFEGAME_* group only lists files from its own layer."""
+    manifest = root / "life_game.pri"
+    if not manifest.is_file():
+        return []
+    text = manifest.read_text(encoding="utf-8", errors="replace")
+    problems: list[str] = []
+    listed: dict[str, list[str]] = {}
+
+    for line in logical_lines(text):
+        match = MANIFEST_GROUP_RE.match(line)
+        if not match:
+            continue
+        group, values = match.group(1), match.group(2)
+        expected = MANIFEST_GROUP_LAYER[group]
+        for token in values.split():
+            if not token.startswith("$$LIFEGAME_ROOT/"):
+                continue
+            rel = token[len("$$LIFEGAME_ROOT/"):]
+            if not rel.startswith("src/"):
+                continue
+            parts = rel.split("/")
+            if len(parts) < 3:
+                continue
+            actual = parts[1]
+            if actual != expected:
+                problems.append(
+                    f"{manifest}: {group}_* lists {rel}, expected layer {expected}")
+            listed.setdefault(rel, []).append(group)
+            if not (root / rel).is_file():
+                problems.append(f"{manifest}: listed file does not exist: {rel}")
+
+    for rel, groups in listed.items():
+        unique = sorted(set(groups))
+        if len(unique) > 1:
+            problems.append(
+                f"{manifest}: {rel} is listed in multiple layer groups: {', '.join(unique)}")
+    return problems
 
 
 def check_manifest(root: Path, sources: list[Path]) -> list[str]:
@@ -163,6 +223,7 @@ def main() -> int:
                 )
 
     problems.extend(check_manifest(root, sources))
+    problems.extend(check_manifest_groups(root))
 
     if problems:
         print("Architecture violations:")

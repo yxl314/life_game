@@ -5,8 +5,10 @@
  * @brief Immutable rectangular cell pattern.
  */
 
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "domain/cell.h"
@@ -27,13 +29,17 @@ public:
     Pattern() = default;
 
     /**
-     * @brief Construct a pattern from explicit fields.
+     * @brief Construct a validated pattern from explicit fields.
      * @param id Stable pattern identifier.
      * @param width Width in cells.
      * @param height Height in cells.
-     * @param cells Row-major cells; may be inconsistent until validated.
+     * @param cells Row-major cells; size must equal width * height.
+     * @return Pattern, or std::nullopt when the fields are inconsistent.
      */
-    Pattern(std::string id, int width, int height, std::vector<Cell> cells);
+    static std::optional<Pattern> fromCells(std::string id,
+                                            int width,
+                                            int height,
+                                            std::vector<Cell> cells);
 
     /// @return Stable pattern identifier.
     const std::string& id() const noexcept
@@ -84,6 +90,8 @@ public:
     static Pattern fromAscii(std::string id, const std::vector<std::string>& rows);
 
 private:
+    Pattern(std::string id, int width, int height, std::vector<Cell> cells);
+
     std::string m_id;
     int m_width = 0;
     int m_height = 0;

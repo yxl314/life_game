@@ -2,6 +2,7 @@
 
 #include "service/service_log.h"
 
+#include <QMetaType>
 #include <QSettings>
 
 #include <utility>
@@ -39,10 +40,10 @@ SettingsLoadResult SettingsStore::load() const
     };
     const auto readBool = [this, &corrupt](const char* key, bool fallback) {
         bool ok = false;
-        const bool value = m_settings->value(QString::fromLatin1(key), fallback).toBool();
         // QVariant::toBool() has no error flag; check the stored type instead.
         const QVariant raw = m_settings->value(QString::fromLatin1(key), fallback);
-        if (raw.type() == QVariant::String)
+        const bool value = raw.toBool();
+        if (raw.metaType().id() == QMetaType::QString)
         {
             const QString text = raw.toString().trimmed().toLower();
             ok = text == QStringLiteral("true") || text == QStringLiteral("false") ||
@@ -64,7 +65,7 @@ SettingsLoadResult SettingsStore::load() const
     state.settings.jumpStep = readInt("settings/jump_step", 100);
     state.settings.sizeStep = readInt("settings/size_step", 5);
     state.settings.snapshotInterval = readInt("settings/snapshot_interval", 100);
-    state.settings.density = readInt("simulation/density", 30);
+    state.settings.density = readInt("simulation/density", shared::limits::kDefaultDensity);
     state.settings.speed = readInt("simulation/speed", 10);
     state.settings.gridVisible = readBool("view/grid", true);
     state.settings = shared::normalized(state.settings);
@@ -74,11 +75,17 @@ SettingsLoadResult SettingsStore::load() const
         m_settings->value(QStringLiteral("simulation/rule"), QStringLiteral("B3/S23")).toString();
 
     bool boundaryOk = false;
-    state.boundary = m_settings->value(QStringLiteral("simulation/boundary"), 0).toInt(&boundaryOk);
-    if (!boundaryOk || (state.boundary != 0 && state.boundary != 1))
+    const int boundaryValue =
+        m_settings->value(QStringLiteral("simulation/boundary"), 0).toInt(&boundaryOk);
+    if (!boundaryOk || (boundaryValue != 0 && boundaryValue != 1))
     {
-        state.boundary = 0;
+        state.boundary = domain::Boundary::Dead;
         corrupt = true;
+    }
+    else
+    {
+        state.boundary =
+            boundaryValue == 1 ? domain::Boundary::Wrap : domain::Boundary::Dead;
     }
 
     bool generationOk = false;
@@ -137,7 +144,7 @@ SettingsError SettingsStore::save(const SessionState& state, QString* detail)
     m_settings->setValue(QStringLiteral("simulation/density"), state.settings.density);
     m_settings->setValue(QStringLiteral("simulation/speed"), state.settings.speed);
     m_settings->setValue(QStringLiteral("simulation/rule"), state.ruleNotation);
-    m_settings->setValue(QStringLiteral("simulation/boundary"), state.boundary);
+    m_settings->setValue(QStringLiteral("simulation/boundary"), static_cast<int>(state.boundary));
     m_settings->setValue(QStringLiteral("board/rle"), state.boardRle);
     m_settings->setValue(QStringLiteral("board/generation"), state.generation);
     m_settings->setValue(QStringLiteral("view/grid"), state.settings.gridVisible);

@@ -23,6 +23,7 @@ namespace lifegame::view
 {
 class BoardView;
 class ControlPanel;
+class FrameTimingSource;
 }
 
 namespace lifegame::controller
@@ -42,10 +43,12 @@ public:
     /// @param model Model to observe.
     /// @param view Passive board view.
     /// @param panel Passive side panel.
+    /// @param timing Narrow paint-duration metric source.
     /// @param parent QObject parent.
     BoardPresenter(model::LifeModel* model,
                    view::BoardView* view,
                    view::ControlPanel* panel,
+                   view::FrameTimingSource* timing,
                    QObject* parent = nullptr);
 
     /// @brief Sync with current model state, bypassing the frame timer.
@@ -66,6 +69,7 @@ private:
     model::LifeModel* m_model = nullptr;
     view::BoardView* m_view = nullptr;
     view::ControlPanel* m_panel = nullptr;
+    view::FrameTimingSource* m_timing = nullptr;
     QTimer* m_timer = nullptr;
     int m_screenRefresh = 60;
     int m_generationRate = shared::limits::kDefaultSpeed;

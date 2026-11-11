@@ -25,7 +25,7 @@ ConfigurationController::ConfigurationController(model::LifeModel* model,
     : QObject(parent), m_model(model), m_catalog(catalog), m_messages(messages)
 {
     connect(panel, &view::ControlPanel::ruleChanged, this, &ConfigurationController::setRuleIndex);
-    connect(panel, &view::ControlPanel::boundaryChanged, this, &ConfigurationController::setBoundaryIndex);
+    connect(panel, &view::ControlPanel::boundaryChanged, this, &ConfigurationController::setBoundary);
 }
 
 void ConfigurationController::setRuleIndex(int index)
@@ -99,13 +99,8 @@ void ConfigurationController::syncRuleActions()
     }
 }
 
-void ConfigurationController::setBoundaryIndex(int index)
+void ConfigurationController::setBoundary(domain::Boundary boundary)
 {
-    if (index != 0 && index != 1)
-    {
-        return;
-    }
-    const auto boundary = index == 1 ? domain::Boundary::Wrap : domain::Boundary::Dead;
     if (m_model->boundary() == boundary)
     {
         return;

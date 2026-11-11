@@ -9,6 +9,7 @@
 #include <QVector>
 #include <QWidget>
 
+#include "domain/boundary.h"
 #include "shared/app_settings.h"
 #include "shared/life_stats.h"
 #include "view/view_state.h"
@@ -29,7 +30,7 @@ class RuleCatalog;
 struct PatternOption
 {
     QString text; ///< Localized label.
-    int id = -1;  ///< Pattern index, or -1 for the brush.
+    QString id;   ///< Stable pattern ID; empty means the brush.
 };
 
 /**
@@ -64,8 +65,8 @@ public:
     /// @param notation Canonical rule notation.
     void setRuleNotation(const QString& notation);
 
-    /// @param index 0 = dead boundary, 1 = wrap boundary.
-    void setBoundaryIndex(int index);
+    /// @param boundary Boundary policy to display.
+    void setBoundary(domain::Boundary boundary);
 
     /// @param generation Oldest rewindable generation.
     void setOldestGeneration(int generation);
@@ -108,12 +109,14 @@ signals:
     void stepRequested();                      ///< Single-step requested.
     void clearRequested();                     ///< Clear-board requested.
     void randomizeRequested(int density);      ///< Randomize with a percentage.
+    void randomDensityChanged(int density);    ///< Density spin box changed.
+    void jumpStepChanged(int generations);     ///< Jump amount spin box changed.
     void speedChanged(int speed);              ///< Speed slider changed.
     void rewindRequested(int generations);     ///< Rewind button clicked.
     void fastForwardRequested(int generations);///< Fast-forward button clicked.
-    void patternChanged(int patternId);        ///< Pattern selection changed.
+    void patternChanged(const QString& patternId); ///< Pattern selection changed.
     void ruleChanged(int index);               ///< Rule preset changed.
-    void boundaryChanged(int index);           ///< Boundary mode changed.
+    void boundaryChanged(domain::Boundary boundary); ///< Boundary mode changed.
     void resizeRequested(int width, int height);///< Apply size requested.
     void gridVisibilityChanged(bool visible);  ///< Grid checkbox changed.
 
@@ -126,7 +129,7 @@ private:
 
     const RuleCatalog* m_ruleCatalog = nullptr;
     QString m_ruleNotation = QStringLiteral("B3/S23");
-    int m_boundaryIndex = 0;
+    domain::Boundary m_boundary = domain::Boundary::Dead;
 
     QLabel* m_generationValue = nullptr;
     QLabel* m_populationValue = nullptr;

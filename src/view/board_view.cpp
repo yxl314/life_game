@@ -54,22 +54,6 @@ BoardView::BoardView(QWidget* parent)
     setToolTip(tr("左键绘制 / 擦除\n中键或右键拖动平移\n滚轮缩放"));
 }
 
-void BoardView::setBoard(const domain::Grid* board)
-{
-    if (m_board == board)
-    {
-        m_board = board;
-        return;
-    }
-
-    m_board = board;
-    m_hover_row = -1;
-    m_hover_col = -1;
-    m_cell_pixels = fitCellPixels();
-    m_pan = QPointF();
-    update();
-}
-
 void BoardView::applyFrame(const BoardFrame& frame)
 {
     const bool boardChanged = m_board != frame.board;
@@ -83,22 +67,6 @@ void BoardView::applyFrame(const BoardFrame& frame)
         m_cell_pixels = fitCellPixels();
         m_pan = QPointF();
     }
-    update();
-}
-
-void BoardView::setPopulation(int population)
-{
-    m_population = std::max(0, population);
-    update();
-}
-
-void BoardView::setRunning(bool running)
-{
-    if (m_animating == running)
-    {
-        return;
-    }
-    m_animating = running;
     update();
 }
 

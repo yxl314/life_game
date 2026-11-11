@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "model/life_model.h"
+#include "shared/app_settings.h"
 #include "view/control_panel.h"
 #include "view/interfaces.h"
 
@@ -23,6 +24,9 @@ JumpController::JumpController(model::LifeModel* model,
       m_messages(messages),
       m_factory(std::move(factory))
 {
+    m_jumpStep = shared::AppSettings{}.jumpStep;
+    m_panel->setJumpStep(m_jumpStep);
+    connect(m_panel, &view::ControlPanel::jumpStepChanged, this, &JumpController::setJumpStep);
     connect(m_panel, &view::ControlPanel::rewindRequested, this, &JumpController::rewindBy);
     connect(m_panel, &view::ControlPanel::fastForwardRequested, this, &JumpController::jumpBy);
     connect(m_model, &model::LifeModel::jumpStarted, this, &JumpController::onJumpStarted);
@@ -34,7 +38,7 @@ JumpController::JumpController(model::LifeModel* model,
 
 void JumpController::rewind()
 {
-    jumpBy(-m_panel->jumpGenerations());
+    jumpBy(-m_jumpStep);
 }
 
 void JumpController::rewindBy(int generations)
@@ -44,7 +48,19 @@ void JumpController::rewindBy(int generations)
 
 void JumpController::fastForward()
 {
-    jumpBy(m_panel->jumpGenerations());
+    jumpBy(m_jumpStep);
+}
+
+int JumpController::jumpStep() const
+{
+    return m_jumpStep;
+}
+
+void JumpController::setJumpStep(int step)
+{
+    m_jumpStep =
+        std::clamp(step, shared::limits::kJumpStepMin, shared::limits::kJumpStepMax);
+    m_panel->setJumpStep(m_jumpStep);
 }
 
 void JumpController::jumpBy(int delta)

@@ -15,6 +15,7 @@
 #include <QVector>
 #include <QWidget>
 
+#include "view/interfaces.h"
 #include "view/view_state.h"
 
 namespace lifegame::domain
@@ -32,25 +33,13 @@ namespace lifegame::view
  * plus a little render state. The view never includes or observes the Model,
  * never copies the board and never calls a mutating model method.
  */
-class BoardView : public QWidget
+class BoardView : public QWidget, public BoardImageSource, public FrameTimingSource
 {
     Q_OBJECT
 
 public:
     /// @param parent Parent widget.
     explicit BoardView(QWidget* parent = nullptr);
-
-    /// @brief Legacy partial setter; prefer applyFrame().
-    /// @param board Read-only board pointer.
-    void setBoard(const domain::Grid* board);
-
-    /// @brief Legacy partial setter; prefer applyFrame().
-    /// @param population Alive-cell count.
-    void setPopulation(int population);
-
-    /// @brief Legacy partial setter; prefer applyFrame().
-    /// @param running Running state.
-    void setRunning(bool running);
 
     /// @brief Request a repaint.
     void refresh();
@@ -60,7 +49,7 @@ public:
     void applyFrame(const BoardFrame& frame);
 
     /// @return Duration of the last paint in milliseconds (0 before first paint).
-    double lastPaintDurationMs() const
+    double lastPaintDurationMs() const override
     {
         return m_last_paint_ms;
     }
@@ -72,7 +61,7 @@ public:
     bool gridVisible() const;
 
     /// @return Full-board PNG-ready image (export path).
-    QImage renderBoardImage() const;
+    QImage renderBoardImage() const override;
 
 public slots:
     /// @param offsets Pattern offsets relative to the hover cell.

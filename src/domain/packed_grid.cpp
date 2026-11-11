@@ -3,16 +3,43 @@
 #include "domain/grid.h"
 
 #include <algorithm>
+#include <cstring>
+#include <new>
 
 namespace lifegame::domain
 {
+
+namespace
+{
+
+std::unique_ptr<std::uint64_t[]> allocateWords(std::size_t count)
+{
+    if (count == 0)
+    {
+        return {};
+    }
+    return std::unique_ptr<std::uint64_t[]>(new (std::nothrow) std::uint64_t[count]);
+}
+
+} // namespace
 
 PackedGrid::PackedGrid(const Grid& board)
     : m_width(board.width()), m_height(board.height())
 {
     const std::size_t count =
         static_cast<std::size_t>(m_width) * static_cast<std::size_t>(m_height);
-    m_words.assign((count + 63u) / 64u, 0);
+    m_wordCount = (count + 63u) / 64u;
+    m_words = allocateWords(m_wordCount);
+    if (m_wordCount > 0 && !m_words)
+    {
+        m_valid = false;
+        m_wordCount = 0;
+        return;
+    }
+    if (m_wordCount > 0)
+    {
+        std::memset(m_words.get(), 0, m_wordCount * sizeof(std::uint64_t));
+    }
 
     const Cell* cells = board.data();
     for (std::size_t i = 0; i < count; ++i)
@@ -24,10 +51,46 @@ PackedGrid::PackedGrid(const Grid& board)
     }
 }
 
+PackedGrid::PackedGrid(const PackedGrid& other)
+    : m_width(other.m_width),
+      m_height(other.m_height),
+      m_wordCount(other.m_wordCount),
+      m_words(allocateWords(other.m_wordCount)),
+      m_valid(other.m_valid && (other.m_wordCount == 0 || m_words != nullptr))
+{
+    if (m_valid && m_wordCount > 0)
+    {
+        std::memcpy(m_words.get(), other.m_words.get(), m_wordCount * sizeof(std::uint64_t));
+    }
+}
+
+PackedGrid& PackedGrid::operator=(const PackedGrid& other)
+{
+    if (this == &other)
+    {
+        return *this;
+    }
+    m_width = other.m_width;
+    m_height = other.m_height;
+    m_wordCount = other.m_wordCount;
+    m_words = allocateWords(other.m_wordCount);
+    m_valid = other.m_valid && (other.m_wordCount == 0 || m_words != nullptr);
+    if (m_valid && m_wordCount > 0)
+    {
+        std::memcpy(m_words.get(), other.m_words.get(), m_wordCount * sizeof(std::uint64_t));
+    }
+    return *this;
+}
+
 Grid PackedGrid::unpack() const
 {
+    if (!m_valid)
+    {
+        return {};
+    }
+
     Grid board(m_width, m_height);
-    if (m_words.empty())
+    if (m_wordCount == 0)
     {
         return board;
     }

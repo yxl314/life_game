@@ -12,8 +12,30 @@
 
 #include "shared/jump_info.h"
 
+class QImage;
+
 namespace lifegame::view
 {
+
+/// @brief Narrow output port for exporting the current board image.
+class BoardImageSource
+{
+public:
+    virtual ~BoardImageSource() = default;
+
+    /// @return Full-board image, or a null image when no board is available.
+    virtual QImage renderBoardImage() const = 0;
+};
+
+/// @brief Narrow metric source used by frame scheduling.
+class FrameTimingSource
+{
+public:
+    virtual ~FrameTimingSource() = default;
+
+    /// @return Duration of the last paint in milliseconds.
+    virtual double lastPaintDurationMs() const = 0;
+};
 
 /// @brief Output port for destructive-action confirmation.
 class ConfirmSink

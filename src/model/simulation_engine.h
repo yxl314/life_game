@@ -60,8 +60,9 @@ public:
     void discardPending();
 
     /// @brief Move the finished generation out of the engine.
+    /// @param stats Optional output statistics collected during computation.
     /// @return Finished board; only call after stepReady().
-    domain::Grid takeResult();
+    domain::Grid takeResult(domain::GridStats* stats = nullptr);
 
 signals:
     /// @brief Emitted on the UI thread when a generation is ready.
@@ -76,8 +77,9 @@ private slots:
     void onFinished();
 
 private:
-    QFutureWatcher<int> m_watcher;
+    QFutureWatcher<domain::GridStats> m_watcher;
     domain::Grid m_output;
+    domain::GridStats m_stats;
     std::shared_ptr<const domain::Grid> m_snapshot;
     quint64 m_activeId = 0;
     quint64 m_nextId = 1;

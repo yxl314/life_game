@@ -9,13 +9,7 @@
 
 int main(int argc, char* argv[])
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
-#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-#endif
-
+    // Qt 6 默认启用高 DPI 缩放和高 DPI 位图，不再需要设置旧属性。
     QApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("life-game"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("life-game.local"));

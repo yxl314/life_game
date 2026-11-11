@@ -9,6 +9,7 @@
 
 #include "domain/grid.h"
 #include "domain/pattern_library.h"
+#include "domain/rule.h"
 #include "view/board_view.h"
 #include "view/jump_progress_dialog.h"
 #include "view/control_panel.h"
@@ -31,6 +32,14 @@ std::vector<QLabel*> statLabels(QWidget& panel)
         return left->mapTo(&panel, QPoint(0, 0)).x() < right->mapTo(&panel, QPoint(0, 0)).x();
     });
     return labels;
+}
+
+void pushBoard(lifegame::view::BoardView& view, const lifegame::domain::Grid& grid)
+{
+    lifegame::view::BoardFrame frame;
+    frame.board = &grid;
+    frame.population = grid.population();
+    view.applyFrame(frame);
 }
 
 } // namespace
@@ -113,8 +122,7 @@ void ViewTests::boardViewRendersPushedStateAndCapsExport()
     grid.setCell(5, 5, true);
 
     lifegame::view::BoardView view;
-    view.setBoard(&grid);
-    view.setPopulation(grid.population());
+    pushBoard(view, grid);
     view.resize(640, 480);
     view.refresh();
 
@@ -125,8 +133,7 @@ void ViewTests::boardViewRendersPushedStateAndCapsExport()
 
     lifegame::domain::Grid largeGrid(400, 400);
     largeGrid.setCell(0, 0, true);
-    view.setBoard(&largeGrid);
-    view.setPopulation(largeGrid.population());
+    pushBoard(view, largeGrid);
     const QImage large = view.renderBoardImage();
     QVERIFY(!large.isNull());
     QVERIFY(large.width() <= 4096);
@@ -136,18 +143,29 @@ void ViewTests::boardViewRendersPushedStateAndCapsExport()
 void ViewTests::catalogs()
 {
     lifegame::view::RuleCatalog rules;
-    QCOMPARE(rules.presets().size(), std::size_t{5});
-    QCOMPARE(rules.names().size(), 5);
+    const auto& builtinRules = lifegame::domain::builtinRulePresets();
+    QCOMPARE(rules.presets().size(), builtinRules.size());
+    QCOMPARE(rules.names().size(), static_cast<int>(builtinRules.size()));
+    for (std::size_t i = 0; i < builtinRules.size(); ++i)
+    {
+        QCOMPARE(rules.notationAt(static_cast<int>(i)),
+                 QString::fromStdString(builtinRules[i].rule.notation()));
+    }
     QCOMPARE(rules.nameForNotation(QStringLiteral("B3/S23")), QStringLiteral("康威生命"));
     QVERIFY(rules.notationAt(0) == QStringLiteral("B3/S23"));
     QVERIFY(rules.notationAt(-1).isEmpty());
 
     lifegame::view::PatternCatalog patterns;
-    QCOMPARE(patterns.all().size(), std::size_t{13});
+    const auto& builtinPatterns = lifegame::domain::builtinPatterns();
+    QCOMPARE(patterns.all().size(), builtinPatterns.size());
+    for (const lifegame::domain::Pattern& pattern : builtinPatterns)
+    {
+        QVERIFY2(patterns.find(pattern.id()) != nullptr, pattern.id().c_str());
+    }
     const auto* glider = patterns.find("glider");
     QVERIFY(glider != nullptr);
     QCOMPARE(glider->name, QStringLiteral("滑翔机"));
-    QVERIFY(patterns.displayLabel(lifegame::domain::builtinPatterns().front()).contains(QStringLiteral("滑翔机")));
+    QVERIFY(patterns.displayLabel(builtinPatterns.front()).contains(QStringLiteral("滑翔机")));
 }
 
 void ViewTests::settingsDialogRoundTrip()
@@ -199,8 +217,7 @@ void ViewTests::largeBoardRendersAndExports()
 
     lifegame::view::BoardView view;
     view.resize(1180, 820);
-    view.setBoard(&grid);
-    view.setPopulation(grid.population());
+    pushBoard(view, grid);
     view.refresh();
 
     const QImage image = view.renderBoardImage();
@@ -220,8 +237,7 @@ void ViewTests::zoomedBoardPaintsVisibleRegion()
 
     lifegame::view::BoardView view;
     view.resize(400, 300);
-    view.setBoard(&grid);
-    view.setPopulation(grid.population());
+    pushBoard(view, grid);
     view.show();
     view.zoomIn();
     view.zoomIn();

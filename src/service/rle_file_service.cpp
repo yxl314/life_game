@@ -15,7 +15,7 @@ namespace lifegame::service
 namespace
 {
 
-constexpr qint64 kMaxRleFileBytes = 8 * 1024 * 1024;
+constexpr qint64 kMaxRleFileBytes = 8LL * 1024 * 1024;
 
 } // namespace
 
@@ -33,7 +33,25 @@ RleReadResult RleFileService::read(const QString& path) const
         return {std::nullopt, FileError::TooLarge, {}, {}};
     }
 
-    const QByteArray data = file.readAll();
+    // Read at most one byte past the cap: file.size() is -1 for pipes and
+    // other special files, so readAll() could otherwise consume unbounded data.
+    QByteArray data;
+    while (data.size() <= static_cast<int>(kMaxRleFileBytes))
+    {
+        const qint64 remaining = kMaxRleFileBytes + 1 - data.size();
+        const QByteArray chunk = file.read(remaining);
+        if (chunk.isEmpty())
+        {
+            break;
+        }
+        data += chunk;
+    }
+    if (data.size() > kMaxRleFileBytes)
+    {
+        qCWarning(lcIo) << "RLE read rejected reason=too_large path=" << path << "bytes="
+                        << data.size();
+        return {std::nullopt, FileError::TooLarge, {}, {}};
+    }
     if (file.error() != QFileDevice::NoError)
     {
         qCWarning(lcIo) << "RLE read failed path=" << path << "error=" << file.errorString();

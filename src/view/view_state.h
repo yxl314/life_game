@@ -7,6 +7,7 @@
 
 #include <QString>
 
+#include "domain/boundary.h"
 #include "shared/life_stats.h"
 
 namespace lifegame::domain
@@ -20,8 +21,8 @@ namespace lifegame::view
 /**
  * @brief One complete board frame.
  *
- * Controllers apply this atomically instead of calling
- * setBoard()/setPopulation()/setRunning() separately.
+ * The presenter builds one frame per update and applies it atomically;
+ * BoardView has no partial public setters for board/population/running.
  */
 struct BoardFrame
 {
@@ -46,7 +47,7 @@ struct PanelState
     int width = 0;                                 ///< Board width.
     int height = 0;                                ///< Board height.
     QString ruleNotation = QStringLiteral("B3/S23"); ///< Canonical rule.
-    int boundaryIndex = 0;                         ///< 0 = dead, 1 = wrap.
+    domain::Boundary boundary = domain::Boundary::Dead; ///< Boundary policy.
     int oldestGeneration = 0;                      ///< Oldest rewind generation.
     bool running = false;                          ///< Simulation running state.
 };

@@ -27,7 +27,7 @@ class ImageFilePort;
 
 namespace lifegame::view
 {
-class BoardView;
+class BoardImageSource;
 class MessageSink;
 }
 
@@ -50,14 +50,14 @@ public:
     };
 
     /// @param model Writable model.
-    /// @param view Board view for PNG export.
+    /// @param imageSource Narrow source for PNG export.
     /// @param messages Status output port.
     /// @param dialogParent Parent for file dialogs.
     /// @param rleService RLE file port.
     /// @param imageService PNG output port.
     /// @param parent QObject parent.
     FileController(model::LifeModel* model,
-                   view::BoardView* view,
+                   view::BoardImageSource* imageSource,
                    view::MessageSink* messages,
                    QWidget* dialogParent,
                    service::RleFilePort* rleService,
@@ -87,7 +87,7 @@ private:
     QString rleErrorMessage(const domain::RleErrorInfo& error) const;
 
     model::LifeModel* m_model = nullptr;
-    view::BoardView* m_view = nullptr;
+    view::BoardImageSource* m_imageSource = nullptr;
     view::MessageSink* m_messages = nullptr;
     QWidget* m_dialogParent = nullptr;
     service::RleFilePort* m_rle = nullptr;

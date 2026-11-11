@@ -1,6 +1,6 @@
-# 生命游戏 (life-game) —— Qt 5 / C++17 / 标准分层 MVC
+# 生命游戏 (life-game) —— Qt 6 / C++17 / 标准分层 MVC
 
-康威生命游戏（Conway's Game of Life）的桌面实现。项目使用 **C++17 + Qt 5 Widgets**，
+康威生命游戏（Conway's Game of Life）的桌面实现。项目使用 **C++17 + Qt 6 Widgets**，
 按**标准分层 MVC（被动视图）**组织：
 
 - **Model** 只包含状态、规则和用例，不引用 View/Controller；
@@ -22,10 +22,11 @@
 ## 为什么值得作为范例
 
 - **严格的 View→Model 隔离**：View 不包含 `model/` 任何头文件，只持有
-  `const domain::Grid*` 和 `domain::LifeStats` 等值对象；Model 变化由 Controller
+  `const domain::Grid*` 和 `shared::LifeStats` 等值对象；Model 变化由 Controller
   连接信号后调用 View setter，View 自己不知道 Model 的存在。
 - **Controller 是唯一中介**：输入从 View 信号进入 Controller，状态从 Model 信号
-  经 Controller 推送回 View；没有 View→Model 的隐式观察链。
+  经 Controller 推送回 View；没有 View→Model 的隐式观察链。速度、跳转粒度、密度、
+  尺寸粒度和网格开关的规范状态都由 Controller 持有，View 只显示和发出带值意图。
 - **Domain 零框架依赖**：`src/domain` 不包含任何 Qt 头文件，可用普通 `g++` 单独编译测试。
 - **可执行的架构门禁**：`tools/check_layering.py` 在测试与 CI 中检查层间 include；
   `tools/check_layering.py` 逐条核对。
@@ -211,7 +212,7 @@ tools/layering_selftest.py    门禁负向 fixture
 ```bash
 # 主程序
 mkdir -p build/app && cd build/app
-qmake6 ../../life_game.pro && make -j"$(nproc)"
+qmake6 ../../life_game.pro && make -j6
 cd ../.. && ./build/app/lifegame
 
 # 全部测试（各自构建、各自运行，最后跑两个分层检查）
@@ -225,7 +226,7 @@ cd ../.. && ./build/app/lifegame
 
 ```bash
 mkdir -p build/tests/view && cd build/tests/view
-qmake6 /路径/life_game/tests/view_tests.pro && make -j"$(nproc)"
+qmake6 /路径/life_game/tests/view_tests.pro && make -j6
 QT_QPA_PLATFORM=offscreen ./bin/view_tests
 ```
 
@@ -242,7 +243,7 @@ qmake 会把源码目录的**绝对路径**写进 Makefile 的若干规则里，
 
 ```bash
 mkdir -p /tmp/lifegame-build && cd /tmp/lifegame-build
-qmake6 /path/to/life_game/life_game.pro && make -j"$(nproc)"
+qmake6 /path/to/life_game/life_game.pro && make -j6
 ```
 
 `tests/run_all.sh` 把产物放在仓库内的 `build/tests/` 下（能正常工作），若在非 ASCII
@@ -297,6 +298,22 @@ UI 测试输出 `/tmp/lifegame-ui-tests.png`。界面用例需要离屏平台插
 - `tools/layering_selftest.py` 用负向 fixture 验证门禁确实会失败。
 - CI：普通构建 + ASan/UBSan 两个 job，均执行 `tests/run_all.sh`。
 - 新增源文件必须显式加入 `life_game.pri`（禁止 glob），并放入正确的层目录。
+
+本仓库还提供两份外部工具配置，报告和日志都已加入 `.gitignore`：
+
+```bash
+# cpp-audit：clang-tidy + PMD CPD + Valgrind（ASan 视运行环境而定）
+PYTHONPATH=../cpp-audit/src python3 -m cpp_audit -c audit.toml all
+PYTHONPATH=../cpp-audit/src python3 -m cpp_audit -c audit.toml build --kind asan
+
+# cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
+python3 ../cxx_ci/ci/ci.py -c ci.toml
+```
+
+结果在 `reports/`，CI 完整日志在 `ci-logs/`。当前 PRoot-Distro 环境无法运行
+ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
+默认不把 ASan 运行纳入 `all`，只用 `build --kind asan` 验证构建；普通 Linux
+主机上把 `[asan].enabled` 改回 `true` 即可。
 
 ## 设计细节
 

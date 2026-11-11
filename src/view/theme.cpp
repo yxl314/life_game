@@ -10,7 +10,7 @@
 #include <QPixmap>
 #include <QStyleFactory>
 
-void lifegameInitResources()
+static void initResources()
 {
     Q_INIT_RESOURCE(resources);
 }
@@ -58,7 +58,7 @@ void applyStyleSheet(QApplication& app)
 
 void apply(QApplication& app)
 {
-    ::lifegameInitResources();
+    initResources();
 
     QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     applyDarkPalette(app);

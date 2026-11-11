@@ -4,10 +4,13 @@
 #include <QPoint>
 #include <QSignalBlocker>
 
+#include <algorithm>
+
 #include "controller/error_text.h"
 #include "controller/line_raster.h"
 #include "domain/pattern_library.h"
 #include "model/life_model.h"
+#include "shared/app_settings.h"
 #include "view/board_view.h"
 #include "view/control_panel.h"
 #include "view/interfaces.h"
@@ -15,11 +18,6 @@
 
 namespace lifegame::controller
 {
-
-namespace
-{
-
-} // namespace
 
 BoardController::BoardController(model::LifeModel* model,
                                  view::BoardView* view,
@@ -42,20 +40,49 @@ BoardController::BoardController(model::LifeModel* model,
     connect(m_panel, &view::ControlPanel::patternChanged, this, &BoardController::selectPattern);
     connect(m_panel, &view::ControlPanel::clearRequested, this, &BoardController::clearBoard);
     connect(m_panel, &view::ControlPanel::randomizeRequested, this, &BoardController::onPanelRandomize);
+    connect(m_panel, &view::ControlPanel::randomDensityChanged, this, &BoardController::setRandomDensity);
     connect(m_panel, &view::ControlPanel::resizeRequested, this, &BoardController::resizeBoard);
     connect(m_panel, &view::ControlPanel::gridVisibilityChanged, this, &BoardController::setGridVisible);
 
     QVector<view::PatternOption> options;
-    options.append({tr("画笔（直接绘制）"), -1});
-    const auto& patterns = domain::builtinPatterns();
-    for (int i = 0; i < static_cast<int>(patterns.size()); ++i)
+    options.append({tr("画笔（直接绘制）"), QString()});
+    for (const domain::Pattern& pattern : domain::builtinPatterns())
     {
-        options.append({m_catalog->displayLabel(patterns[static_cast<std::size_t>(i)]), i});
+        options.append({m_catalog->displayLabel(pattern), QString::fromStdString(pattern.id())});
     }
     m_panel->setPatternOptions(options);
-    selectPattern(-1);
+    selectPattern(QString());
 
-    m_gridVisible = m_view->gridVisible();
+    m_gridVisible = shared::AppSettings{}.gridVisible;
+    m_density = shared::AppSettings{}.density;
+    m_sizeStep = shared::AppSettings{}.sizeStep;
+    m_view->setGridVisible(m_gridVisible);
+    m_panel->setGridVisible(m_gridVisible);
+    m_panel->setRandomDensity(m_density);
+    m_panel->setSizeStep(m_sizeStep);
+}
+
+int BoardController::randomDensity() const
+{
+    return m_density;
+}
+
+void BoardController::setRandomDensity(int density)
+{
+    m_density =
+        std::clamp(density, shared::limits::kDensityMin, shared::limits::kDensityMax);
+    m_panel->setRandomDensity(m_density);
+}
+
+int BoardController::sizeStep() const
+{
+    return m_sizeStep;
+}
+
+void BoardController::setSizeStep(int step)
+{
+    m_sizeStep = std::clamp(step, shared::limits::kSizeStepMin, shared::limits::kSizeStepMax);
+    m_panel->setSizeStep(m_sizeStep);
 }
 
 void BoardController::setGridAction(QAction* action)
@@ -180,10 +207,10 @@ void BoardController::applyStamp(int row, int col)
     }
 }
 
-void BoardController::selectPattern(int patternId)
+void BoardController::selectPattern(const QString& patternId)
 {
-    const auto& patterns = domain::builtinPatterns();
-    if (patternId < 0 || patternId >= static_cast<int>(patterns.size()))
+    const domain::Pattern* pattern = domain::findBuiltinPattern(patternId.toStdString());
+    if (pattern == nullptr)
     {
         m_stampMode = false;
         m_stamp = domain::Pattern();
@@ -192,7 +219,7 @@ void BoardController::selectPattern(int patternId)
         return;
     }
 
-    m_stamp = patterns[static_cast<std::size_t>(patternId)];
+    m_stamp = *pattern;
     m_stampMode = true;
 
     QVector<QPoint> offsets;
@@ -241,12 +268,13 @@ void BoardController::clearBoard()
 
 void BoardController::randomizeBoard()
 {
-    onPanelRandomize(m_panel->randomDensity());
+    onPanelRandomize(m_density);
 }
 
 void BoardController::onPanelRandomize(int density)
 {
-    const model::CommandResult result = m_model->randomize(density);
+    setRandomDensity(density);
+    const model::CommandResult result = m_model->randomize(m_density);
     if (m_messages == nullptr)
     {
         return;
@@ -295,6 +323,21 @@ void BoardController::resizeBoard(int width, int height)
     {
         m_messages->showMessage(commandResultText(result), 4000);
     }
+}
+
+void BoardController::zoomIn()
+{
+    m_view->zoomIn();
+}
+
+void BoardController::zoomOut()
+{
+    m_view->zoomOut();
+}
+
+void BoardController::resetZoom()
+{
+    m_view->resetZoom();
 }
 
 void BoardController::loadDemo()

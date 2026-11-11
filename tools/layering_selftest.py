@@ -124,6 +124,21 @@ def main() -> int:
     print(f"{'PASS' if unlisted_ok else 'FAIL'} truly unlisted source: exit={result.returncode}")
     ok &= unlisted_ok
 
+    root = write_tree({
+        "src/domain/listed.h": "#pragma once\n",
+        "src/model/wrong_group.h": "#pragma once\n",
+    })
+    (root / "life_game.pri").write_text(
+        "LIFEGAME_DOMAIN_HEADERS = \\\n"
+        "    $$LIFEGAME_ROOT/src/model/wrong_group.h \\\n"
+        "    $$LIFEGAME_ROOT/src/domain/listed.h\n",
+        encoding="utf-8",
+    )
+    result = run_checker(root)
+    misclassified_ok = result.returncode == 1
+    print(f"{'PASS' if misclassified_ok else 'FAIL'} manifest group mismatch: exit={result.returncode}")
+    ok &= misclassified_ok
+
     return 0 if ok else 1
 
 

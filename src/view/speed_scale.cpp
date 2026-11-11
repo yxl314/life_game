@@ -8,11 +8,6 @@
 namespace lifegame::view
 {
 
-namespace
-{
-
-} // namespace
-
 int speedForSliderPosition(int position)
 {
     if (position <= 0)

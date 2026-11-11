@@ -14,6 +14,7 @@
 
 #include "controller/board_controller.h"
 #include "controller/board_presenter.h"
+#include "controller/controller_settings_bridge.h"
 #include "controller/file_controller.h"
 #include "controller/jump_controller.h"
 #include "controller/line_raster.h"
@@ -117,6 +118,7 @@ private slots:
     void fileControllerPaths();
     void settingsCorruptData();
     void sessionControllerRoundTrip();
+    void sessionRestoreReportsInvalidRule();
 };
 
 void ControllerTests::lineRaster()
@@ -154,7 +156,7 @@ void ControllerTests::boardControllerEditsAndStamps()
     lifegame::view::PatternCatalog catalog;
     FakeMessages messages;
 
-    lifegame::controller::BoardPresenter presenter(&model, &view, &panel, nullptr);
+    lifegame::controller::BoardPresenter presenter(&model, &view, &panel, &view, nullptr);
     lifegame::controller::BoardController controller(&model, &view, &panel, &catalog, &messages, nullptr);
 
     const auto statLabels = panel.findChildren<QLabel*>(QStringLiteral("StatValue"));
@@ -177,7 +179,7 @@ void ControllerTests::boardControllerEditsAndStamps()
     controller.clearBoard();
     QCOMPARE(model.stats().population, 0);
 
-    emit panel.patternChanged(0); // glider
+    emit panel.patternChanged(QStringLiteral("glider"));
     emit view.cellPressed(10, 10);
     QCOMPARE(model.stats().population, 5);
 
@@ -207,7 +209,7 @@ void ControllerTests::simulationControllerDrivesModel()
 {
     lifegame::model::LifeModel model;
     VERIFY_OK(model.resizeBoard(20, 20));
-    QVERIFY(model.setCell(5, 5, true));
+    VERIFY_OK(model.setCell(5, 5, true));
     lifegame::view::ControlPanel panel;
     FakeMessages messages;
     lifegame::controller::SimulationController controller(&model, &panel, &messages, nullptr);
@@ -217,7 +219,7 @@ void ControllerTests::simulationControllerDrivesModel()
     QCOMPARE(model.isRunning(), false);
 
     // The single cell died in the step; give the simulation something to run.
-    QVERIFY(model.setCell(6, 6, true));
+    VERIFY_OK(model.setCell(6, 6, true));
     controller.toggleRunning();
     QCOMPARE(model.isRunning(), true);
     controller.setSpeedExternal(200);
@@ -234,7 +236,7 @@ void ControllerTests::simulationControllerDrivesModel()
     QCOMPARE(controller.speed(), 42);
     QCOMPARE(panel.speed(), 42);
 
-    QVERIFY(model.setCell(7, 7, true));
+    VERIFY_OK(model.setCell(7, 7, true));
     controller.setSpeedExternal(0);
     QCOMPARE(panel.speed(), 0);
     controller.toggleRunning();
@@ -301,7 +303,7 @@ void ControllerTests::settingsStoreRoundTrip()
     state.settings.gridVisible = false;
     state.boardRle = QStringLiteral("x = 3, y = 2, rule = B3/S23\nbo$2bo$3o!\n");
     state.ruleNotation = QStringLiteral("B36/S23");
-    state.boundary = 1;
+    state.boundary = lifegame::domain::Boundary::Wrap;
     state.generation = 77;
     state.windowGeometry = QByteArrayLiteral("geometry");
 
@@ -325,7 +327,7 @@ void ControllerTests::settingsStoreRoundTrip()
     QCOMPARE(value.settings.gridVisible, false);
     QCOMPARE(value.boardRle, state.boardRle);
     QCOMPARE(value.ruleNotation, state.ruleNotation);
-    QCOMPARE(value.boundary, 1);
+    QCOMPARE(value.boundary, lifegame::domain::Boundary::Wrap);
     QCOMPARE(value.generation, 77);
     QCOMPARE(value.windowGeometry, state.windowGeometry);
 }
@@ -400,8 +402,10 @@ void ControllerTests::fileControllerPaths()
     lifegame::model::LifeModel model;
     VERIFY_OK(model.resizeBoard(20, 20));
     lifegame::view::BoardView view;
-    view.setBoard(&model.board());
-    view.setPopulation(model.stats().population);
+    lifegame::view::BoardFrame frame;
+    frame.board = &model.board();
+    frame.population = model.stats().population;
+    view.applyFrame(frame);
     FakeMessages messages;
     lifegame::service::RleFileService rleService;
     lifegame::service::ImageFileService imageService;
@@ -466,20 +470,30 @@ void ControllerTests::sessionControllerRoundTrip()
         lifegame::view::BoardView view;
         lifegame::view::PatternCatalog catalog;
         FakeMessages messages;
-        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, nullptr);
+        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, &view, nullptr);
         lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
         lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
+        lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
+        lifegame::controller::ControllerSettingsBridge bridge(
+            &model, &simulation, &jump, &board);
 
         auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
         lifegame::service::SettingsStore store(std::move(settings));
         lifegame::controller::SessionController session(
-            &model, &panel, &simulation, &board, &store, nullptr, &messages, nullptr);
+            &model, &bridge, &store, nullptr, &messages, nullptr);
         QVERIFY(!session.restore()); // nothing persisted yet
 
-        QVERIFY(model.setCell(5, 5, true));
-        panel.setRandomDensity(55);
+        VERIFY_OK(model.setCell(5, 5, true));
+        board.setRandomDensity(55);
         board.setGridVisible(false);
         simulation.setSpeedExternal(42);
+        jump.setJumpStep(250);
+        QCOMPARE(board.randomDensity(), 55);
+        QCOMPARE(panel.randomDensity(), 55);
+        QCOMPARE(simulation.speed(), 42);
+        QCOMPARE(panel.speed(), 42);
+        QCOMPARE(jump.jumpStep(), 250);
+        QCOMPARE(panel.jumpGenerations(), 250);
         session.save();
     }
 
@@ -489,24 +503,60 @@ void ControllerTests::sessionControllerRoundTrip()
         lifegame::view::BoardView view;
         lifegame::view::PatternCatalog catalog;
         FakeMessages messages;
-        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, nullptr);
+        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, &view, nullptr);
         lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
         lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
+        lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
+        lifegame::controller::ControllerSettingsBridge bridge(
+            &model, &simulation, &jump, &board);
 
         auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
         lifegame::service::SettingsStore store(std::move(settings));
         lifegame::controller::SessionController session(
-            &model, &panel, &simulation, &board, &store, nullptr, &messages, nullptr);
+            &model, &bridge, &store, nullptr, &messages, nullptr);
         QVERIFY(session.restore());
 
         QCOMPARE(model.width(), 250);
         QCOMPARE(model.height(), 200);
         QVERIFY(model.board().cell(5, 5));
+        QCOMPARE(board.randomDensity(), 55);
         QCOMPARE(panel.randomDensity(), 55);
         QCOMPARE(simulation.speed(), 42);
         QCOMPARE(panel.speed(), 42);
         QCOMPARE(board.gridVisible(), false);
     }
+}
+
+void ControllerTests::sessionRestoreReportsInvalidRule()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString path = directory.path() + QStringLiteral("/invalid-rule.ini");
+
+    {
+        QSettings settings(path, QSettings::IniFormat);
+        settings.setValue(QStringLiteral("simulation/rule"), QStringLiteral("not-a-rule"));
+        settings.sync();
+    }
+
+    lifegame::model::LifeModel model;
+    lifegame::view::ControlPanel panel;
+    lifegame::view::BoardView view;
+    lifegame::view::PatternCatalog catalog;
+    FakeMessages messages;
+    lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
+    lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
+    lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
+    lifegame::controller::ControllerSettingsBridge bridge(&model, &simulation, &jump, &board);
+
+    auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
+    lifegame::service::SettingsStore store(std::move(settings));
+    lifegame::controller::SessionController session(
+        &model, &bridge, &store, nullptr, &messages, nullptr);
+
+    QVERIFY(!session.restore());
+    QCOMPARE(model.rule(), lifegame::domain::Rule());
+    QVERIFY(messages.count > 0);
 }
 
 QTEST_MAIN(ControllerTests)

@@ -27,17 +27,18 @@ constexpr int kMinRowsPerChunk = 8;
  */
 struct ComputeRowsTask
 {
-    using result_type = int;
+    using result_type = domain::GridStats;
 
     std::shared_ptr<const domain::Grid> snapshot;
     domain::Grid* output = nullptr;
     domain::Rule rule;
     domain::Boundary boundary = domain::Boundary::Dead;
 
-    int operator()(const QPair<int, int>& range) const
+    domain::GridStats operator()(const QPair<int, int>& range) const
     {
-        domain::Grid::computeRows(*snapshot, output, rule, boundary, range.first, range.second);
-        return 1;
+        domain::GridStats stats;
+        domain::Grid::computeRows(*snapshot, output, rule, boundary, range.first, range.second, &stats);
+        return stats;
     }
 };
 
@@ -46,7 +47,8 @@ struct ComputeRowsTask
 SimulationEngine::SimulationEngine(QObject* parent)
     : QObject(parent)
 {
-    connect(&m_watcher, &QFutureWatcher<int>::finished, this, &SimulationEngine::onFinished);
+    connect(&m_watcher, &QFutureWatcher<domain::GridStats>::finished, this,
+            &SimulationEngine::onFinished);
 }
 
 SimulationEngine::~SimulationEngine()
@@ -95,6 +97,7 @@ CommandResult SimulationEngine::request(const domain::Grid& board,
     }
     m_snapshot = std::move(snapshot);
     m_output.resize(width, height);
+    m_stats = domain::GridStats{};
     m_activeId = m_nextId++;
     m_busy = true;
 
@@ -120,8 +123,8 @@ CommandResult SimulationEngine::request(const domain::Grid& board,
         }
     }
 
-    m_expectedTasks = ranges.size();
-    const QFuture<int> future =
+    m_expectedTasks = static_cast<int>(ranges.size());
+    const QFuture<domain::GridStats> future =
         QtConcurrent::mapped(ranges, ComputeRowsTask{m_snapshot, &m_output, rule, boundary});
     m_watcher.setFuture(future);
     *requestId = m_activeId;
@@ -138,8 +141,13 @@ void SimulationEngine::discardPending()
     m_activeId = 0;
 }
 
-domain::Grid SimulationEngine::takeResult()
+domain::Grid SimulationEngine::takeResult(domain::GridStats* stats)
 {
+    if (stats != nullptr)
+    {
+        *stats = m_stats;
+        m_stats = domain::GridStats{};
+    }
     // Grid owns a heap vector; move it instead of copying the active cells.
     return std::move(m_output);
 }
@@ -159,9 +167,18 @@ void SimulationEngine::onFinished()
     {
         qCCritical(lcModel) << "step computation incomplete results="
                             << m_watcher.future().resultCount() << "expected=" << expectedTasks;
+        m_stats = domain::GridStats{};
         emit stepFailed(CommandResult::ComputationFailed);
         return;
     }
+
+    domain::GridStats total;
+    for (const domain::GridStats& part : m_watcher.future().results())
+    {
+        total.population += part.population;
+        total.changed = total.changed || part.changed;
+    }
+    m_stats = total;
     emit stepReady(finishedId);
 }
 

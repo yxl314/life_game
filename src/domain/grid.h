@@ -18,6 +18,13 @@
 namespace lifegame::domain
 {
 
+/// @brief Aggregate statistics produced while computing a generation.
+struct GridStats
+{
+    int population = 0; ///< Alive cells in the computed range/board.
+    bool changed = false; ///< True when any computed cell differs from its source.
+};
+
 /**
  * @brief Heap-backed board with one contiguous active-cell vector.
  *
@@ -148,9 +155,14 @@ public:
      * @param next Output generation; resized to `current` dimensions.
      * @param rule Life-like rule.
      * @param boundary Boundary policy.
+     * @param stats Optional output statistics; reset before computing.
      * @note `next` must not alias `current`.
      */
-    static void computeNext(const Grid& current, Grid* next, const Rule& rule, Boundary boundary);
+    static void computeNext(const Grid& current,
+                            Grid* next,
+                            const Rule& rule,
+                            Boundary boundary,
+                            GridStats* stats = nullptr);
 
     /**
      * @brief Compute a half-open row range into `next`.
@@ -161,6 +173,7 @@ public:
      * @param boundary Boundary policy.
      * @param rowBegin First row (inclusive).
      * @param rowEnd One-past-last row (exclusive).
+     * @param stats Optional output statistics for this range; reset first.
      * @note Different ranges only read `current` and write disjoint rows of
      *       `next`, so they may run concurrently.
      */
@@ -169,7 +182,8 @@ public:
                             const Rule& rule,
                             Boundary boundary,
                             int rowBegin,
-                            int rowEnd);
+                            int rowEnd,
+                            GridStats* stats = nullptr);
 
 private:
     int m_width = 0;

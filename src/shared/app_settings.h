@@ -24,6 +24,7 @@ inline constexpr int kSpeedMax = 120;
 inline constexpr int kDefaultSpeed = 10;
 inline constexpr int kDensityMin = 5;
 inline constexpr int kDensityMax = 90;
+inline constexpr int kDefaultDensity = 30;
 
 /**
  * @brief Cell count above which the view uses image rendering and the
@@ -38,7 +39,7 @@ struct AppSettings
     int jumpStep = 100;                    ///< Jump amount in generations.
     int sizeStep = 5;                      ///< Board-size spinner step.
     int snapshotInterval = 100;            ///< Snapshot interval in generations.
-    int density = 30;                      ///< Random-fill percentage.
+    int density = limits::kDefaultDensity; ///< Random-fill percentage.
     int speed = limits::kDefaultSpeed;     ///< Generations per second (0 = pause).
     bool gridVisible = true;               ///< Whether grid lines are shown.
 };

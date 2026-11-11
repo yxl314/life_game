@@ -13,8 +13,6 @@
 #include <string_view>
 #include <vector>
 
-#include "domain/rule.h"
-
 namespace lifegame::view
 {
 
@@ -39,10 +37,6 @@ public:
 
     /// @return Localized preset names in display order.
     QStringList names() const;
-
-    /// @param rule Rule to locate.
-    /// @return Preset index, or -1.
-    int indexOf(const domain::Rule& rule) const;
 
     /// @param index Preset index.
     /// @return Canonical notation, or empty.

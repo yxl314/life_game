@@ -26,16 +26,14 @@ class SettingsStore;
 
 namespace lifegame::view
 {
-class ControlPanel;
 class MessageSink;
 }
 
 namespace lifegame::controller
 {
 
-class BoardController;
 class SessionService;
-class SimulationController;
+class SessionSettingsPort;
 
 /// @brief Application/session coordinator: restore on start, persist on exit.
 class SessionController : public QObject
@@ -44,17 +42,13 @@ class SessionController : public QObject
 
 public:
     /// @param model Model to restore/save.
-    /// @param panel Settings/UI source.
-    /// @param simulation Speed target.
-    /// @param board Grid target.
+    /// @param settingsPort Narrow adapter to controller-owned input settings.
     /// @param store Persistence store.
     /// @param window Window geometry source.
     /// @param messages Status output port.
     /// @param parent QObject parent.
     SessionController(model::LifeModel* model,
-                      view::ControlPanel* panel,
-                      SimulationController* simulation,
-                      BoardController* board,
+                      SessionSettingsPort* settingsPort,
                       service::SettingsStore* store,
                       QMainWindow* window,
                       view::MessageSink* messages,
@@ -70,13 +64,15 @@ public:
     /// @return Last applied/normalized settings.
     const shared::AppSettings& settings() const;
 
+    /// @brief Capture current controller-owned input state into settings().
+    void refreshSettings();
+
     /// @param values Settings to normalize and apply.
     void applySettings(const shared::AppSettings& values);
 
+private:
     model::LifeModel* m_model = nullptr;
-    view::ControlPanel* m_panel = nullptr;
-    SimulationController* m_simulation = nullptr;
-    BoardController* m_board = nullptr;
+    SessionSettingsPort* m_settingsPort = nullptr;
     std::unique_ptr<SessionService> m_service;
     QMainWindow* m_window = nullptr;
     view::MessageSink* m_messages = nullptr;
