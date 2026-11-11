@@ -116,6 +116,7 @@ private:
                                                      double cellPixels) const;
     void clampPan();
     void zoomBy(double factor);
+    void zoomAt(const QPointF& anchor, double factor);
 
     void drawBoard(QPainter& painter,
                    const domain::Grid& board,

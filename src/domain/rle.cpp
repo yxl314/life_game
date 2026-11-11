@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "domain/text_util.h"
+
 namespace lifegame::domain
 {
 
@@ -17,18 +19,7 @@ namespace
 constexpr int kMaxWidth = kMaxBoardWidth;
 constexpr int kMaxHeight = kMaxBoardHeight;
 
-std::string_view trim(std::string_view text)
-{
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0)
-    {
-        text.remove_prefix(1);
-    }
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())) != 0)
-    {
-        text.remove_suffix(1);
-    }
-    return text;
-}
+using detail::trim;
 
 RleErrorInfo makeError(RleError code, std::string_view source, std::size_t offset)
 {

@@ -1,8 +1,9 @@
 #include "domain/rule.h"
 
 #include <algorithm>
-#include <cctype>
 #include <string>
+
+#include "domain/text_util.h"
 
 namespace lifegame::domain
 {
@@ -10,18 +11,7 @@ namespace lifegame::domain
 namespace
 {
 
-std::string_view trim(std::string_view text)
-{
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0)
-    {
-        text.remove_prefix(1);
-    }
-    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())) != 0)
-    {
-        text.remove_suffix(1);
-    }
-    return text;
-}
+using detail::trim;
 
 bool parseMask(std::string_view text, std::uint16_t* mask)
 {

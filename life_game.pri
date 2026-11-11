@@ -24,6 +24,7 @@ LIFEGAME_DOMAIN_HEADERS = \
     $$LIFEGAME_ROOT/src/domain/board_limits.h \
     $$LIFEGAME_ROOT/src/domain/boundary.h \
     $$LIFEGAME_ROOT/src/domain/packed_grid.h \
+    $$LIFEGAME_ROOT/src/domain/text_util.h \
     $$LIFEGAME_ROOT/src/domain/cell.h
 
 LIFEGAME_DOMAIN_SOURCES = \

@@ -84,7 +84,7 @@ python3 tools/check_layering.py .
 python3 tools/layering_selftest.py
 ```
 
-当前结果：主程序和 6 个测试工程通过；门禁 99 个源文件通过；负向 fixture 全部按预期失败。
+当前结果：主程序和 6 个测试工程通过；门禁 100 个源文件通过；负向 fixture 全部按预期失败。
 
 ## 复审改进落实
 

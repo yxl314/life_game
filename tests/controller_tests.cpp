@@ -94,6 +94,36 @@ private:
     JumpState* m_state = nullptr;
 };
 
+struct SessionHarness
+{
+    lifegame::model::LifeModel model;
+    lifegame::view::ControlPanel panel;
+    lifegame::view::BoardView view;
+    lifegame::view::PatternCatalog catalog;
+    FakeMessages messages;
+    lifegame::controller::BoardController board;
+    lifegame::controller::SimulationController simulation;
+    lifegame::controller::JumpController jump;
+    lifegame::controller::ControllerSettingsBridge bridge;
+    lifegame::service::SettingsStore store;
+    lifegame::controller::SessionController session;
+
+    explicit SessionHarness(const QString& path)
+        : model(),
+          panel(),
+          view(),
+          catalog(),
+          messages(),
+          board(&model, &view, &panel, &catalog, &messages, nullptr),
+          simulation(&model, &panel, &messages, nullptr),
+          jump(&model, &panel, &messages, {}, nullptr),
+          bridge(&model, &simulation, &jump, &board),
+          store(std::make_unique<QSettings>(path, QSettings::IniFormat)),
+          session(&model, &bridge, &store, nullptr, &messages, nullptr)
+    {
+    }
+};
+
 void place(lifegame::model::LifeModel* model, const std::string& id, int row, int col)
 {
     const auto* pattern = lifegame::domain::findBuiltinPattern(id);
@@ -465,65 +495,35 @@ void ControllerTests::sessionControllerRoundTrip()
     const QString path = directory.path() + QStringLiteral("/session.ini");
 
     {
-        lifegame::model::LifeModel model;
-        lifegame::view::ControlPanel panel;
-        lifegame::view::BoardView view;
-        lifegame::view::PatternCatalog catalog;
-        FakeMessages messages;
-        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, &view, nullptr);
-        lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
-        lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
-        lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
-        lifegame::controller::ControllerSettingsBridge bridge(
-            &model, &simulation, &jump, &board);
+        SessionHarness harness(path);
+        QVERIFY(!harness.session.restore()); // nothing persisted yet
 
-        auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
-        lifegame::service::SettingsStore store(std::move(settings));
-        lifegame::controller::SessionController session(
-            &model, &bridge, &store, nullptr, &messages, nullptr);
-        QVERIFY(!session.restore()); // nothing persisted yet
-
-        VERIFY_OK(model.setCell(5, 5, true));
-        board.setRandomDensity(55);
-        board.setGridVisible(false);
-        simulation.setSpeedExternal(42);
-        jump.setJumpStep(250);
-        QCOMPARE(board.randomDensity(), 55);
-        QCOMPARE(panel.randomDensity(), 55);
-        QCOMPARE(simulation.speed(), 42);
-        QCOMPARE(panel.speed(), 42);
-        QCOMPARE(jump.jumpStep(), 250);
-        QCOMPARE(panel.jumpGenerations(), 250);
-        session.save();
+        VERIFY_OK(harness.model.setCell(5, 5, true));
+        harness.board.setRandomDensity(55);
+        harness.board.setGridVisible(false);
+        harness.simulation.setSpeedExternal(42);
+        harness.jump.setJumpStep(250);
+        QCOMPARE(harness.board.randomDensity(), 55);
+        QCOMPARE(harness.panel.randomDensity(), 55);
+        QCOMPARE(harness.simulation.speed(), 42);
+        QCOMPARE(harness.panel.speed(), 42);
+        QCOMPARE(harness.jump.jumpStep(), 250);
+        QCOMPARE(harness.panel.jumpGenerations(), 250);
+        harness.session.save();
     }
 
     {
-        lifegame::model::LifeModel model;
-        lifegame::view::ControlPanel panel;
-        lifegame::view::BoardView view;
-        lifegame::view::PatternCatalog catalog;
-        FakeMessages messages;
-        lifegame::controller::BoardPresenter presenter(&model, &view, &panel, &view, nullptr);
-        lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
-        lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
-        lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
-        lifegame::controller::ControllerSettingsBridge bridge(
-            &model, &simulation, &jump, &board);
+        SessionHarness harness(path);
+        QVERIFY(harness.session.restore());
 
-        auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
-        lifegame::service::SettingsStore store(std::move(settings));
-        lifegame::controller::SessionController session(
-            &model, &bridge, &store, nullptr, &messages, nullptr);
-        QVERIFY(session.restore());
-
-        QCOMPARE(model.width(), 250);
-        QCOMPARE(model.height(), 200);
-        QVERIFY(model.board().cell(5, 5));
-        QCOMPARE(board.randomDensity(), 55);
-        QCOMPARE(panel.randomDensity(), 55);
-        QCOMPARE(simulation.speed(), 42);
-        QCOMPARE(panel.speed(), 42);
-        QCOMPARE(board.gridVisible(), false);
+        QCOMPARE(harness.model.width(), 250);
+        QCOMPARE(harness.model.height(), 200);
+        QVERIFY(harness.model.board().cell(5, 5));
+        QCOMPARE(harness.board.randomDensity(), 55);
+        QCOMPARE(harness.panel.randomDensity(), 55);
+        QCOMPARE(harness.simulation.speed(), 42);
+        QCOMPARE(harness.panel.speed(), 42);
+        QCOMPARE(harness.board.gridVisible(), false);
     }
 }
 
@@ -539,24 +539,10 @@ void ControllerTests::sessionRestoreReportsInvalidRule()
         settings.sync();
     }
 
-    lifegame::model::LifeModel model;
-    lifegame::view::ControlPanel panel;
-    lifegame::view::BoardView view;
-    lifegame::view::PatternCatalog catalog;
-    FakeMessages messages;
-    lifegame::controller::BoardController board(&model, &view, &panel, &catalog, &messages, nullptr);
-    lifegame::controller::SimulationController simulation(&model, &panel, &messages, nullptr);
-    lifegame::controller::JumpController jump(&model, &panel, &messages, {}, nullptr);
-    lifegame::controller::ControllerSettingsBridge bridge(&model, &simulation, &jump, &board);
-
-    auto settings = std::make_unique<QSettings>(path, QSettings::IniFormat);
-    lifegame::service::SettingsStore store(std::move(settings));
-    lifegame::controller::SessionController session(
-        &model, &bridge, &store, nullptr, &messages, nullptr);
-
-    QVERIFY(!session.restore());
-    QCOMPARE(model.rule(), lifegame::domain::Rule());
-    QVERIFY(messages.count > 0);
+    SessionHarness harness(path);
+    QVERIFY(!harness.session.restore());
+    QCOMPARE(harness.model.rule(), lifegame::domain::Rule());
+    QVERIFY(harness.messages.count > 0);
 }
 
 QTEST_MAIN(ControllerTests)

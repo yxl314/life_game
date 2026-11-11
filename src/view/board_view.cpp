@@ -40,6 +40,26 @@ const QColor kHover(88, 166, 255);
 const QColor kPreview(210, 153, 34);
 const QColor kHint(125, 133, 144);
 
+QRectF cellRectAt(const QPointF& topLeft, int row, int col, double cellPixels, double gap)
+{
+    return QRectF(topLeft.x() + static_cast<double>(col) * cellPixels + gap / 2.0,
+                  topLeft.y() + static_cast<double>(row) * cellPixels + gap / 2.0,
+                  std::max(1.0, cellPixels - gap),
+                  std::max(1.0, cellPixels - gap));
+}
+
+void drawCellShape(QPainter& painter, const QRectF& rect, double cellPixels, double radius)
+{
+    if (cellPixels >= kCellImageThreshold)
+    {
+        painter.drawRoundedRect(rect, radius, radius);
+    }
+    else
+    {
+        painter.drawRect(rect);
+    }
+}
+
 } // namespace
 
 BoardView::BoardView(QWidget* parent)
@@ -210,7 +230,12 @@ void BoardView::clampPan()
 
 void BoardView::zoomBy(double factor)
 {
-    if (boardWidth() <= 0 || boardHeight() <= 0)
+    zoomAt(QPointF(static_cast<double>(width()) / 2.0, static_cast<double>(height()) / 2.0), factor);
+}
+
+void BoardView::zoomAt(const QPointF& anchor, double factor)
+{
+    if (boardWidth() <= 0 || boardHeight() <= 0 || factor <= 0.0)
     {
         return;
     }
@@ -223,16 +248,15 @@ void BoardView::zoomBy(double factor)
     }
 
     const QPointF oldTop = boardTopLeft();
-    const double centerX = (static_cast<double>(width()) / 2.0 - oldTop.x()) / oldPixels;
-    const double centerY = (static_cast<double>(height()) / 2.0 - oldTop.y()) / oldPixels;
+    const double anchorX = (anchor.x() - oldTop.x()) / oldPixels;
+    const double anchorY = (anchor.y() - oldTop.y()) / oldPixels;
 
     m_auto_fit = false;
     m_cell_pixels = newPixels;
 
     const QPointF centered((static_cast<double>(width()) - static_cast<double>(boardWidth()) * newPixels) / 2.0,
                            (static_cast<double>(height()) - static_cast<double>(boardHeight()) * newPixels) / 2.0);
-    m_pan = QPointF(static_cast<double>(width()) / 2.0 - centerX * newPixels,
-                    static_cast<double>(height()) / 2.0 - centerY * newPixels) -
+    m_pan = QPointF(anchor.x() - anchorX * newPixels, anchor.y() - anchorY * newPixels) -
             centered;
 
     clampPan();
@@ -339,22 +363,17 @@ void BoardView::drawBoard(QPainter& painter,
                 continue;
             }
 
-            const QRectF cellRect(topLeft.x() + static_cast<double>(col) * cellPixelsValue + gap / 2.0,
-                                  topLeft.y() + static_cast<double>(row) * cellPixelsValue + gap / 2.0,
-                                  std::max(1.0, cellPixelsValue - gap),
-                                  std::max(1.0, cellPixelsValue - gap));
-            if (cellPixelsValue >= 6.0)
+            if (cellPixelsValue >= kCellImageThreshold)
             {
                 painter.setPen(QPen(stroke, 1.0));
-                painter.setBrush(fill);
-                painter.drawRoundedRect(cellRect, radius, radius);
             }
             else
             {
                 painter.setPen(Qt::NoPen);
-                painter.setBrush(fill);
-                painter.drawRect(cellRect);
             }
+            painter.setBrush(fill);
+            drawCellShape(painter, cellRectAt(topLeft, row, col, cellPixelsValue, gap), cellPixelsValue,
+                          radius);
         }
     }
 
@@ -498,18 +517,10 @@ void BoardView::drawCellsDetailed(QPainter& painter,
                 continue;
             }
 
-            const QRectF cellRect(topLeft.x() + static_cast<double>(col) * cellPixelsValue + gap / 2.0,
-                                  topLeft.y() + static_cast<double>(row) * cellPixelsValue + gap / 2.0,
-                                  std::max(1.0, cellPixelsValue - gap),
-                                  std::max(1.0, cellPixelsValue - gap));
-            if (cellPixelsValue >= 6.0)
-            {
-                painter.drawRoundedRect(cellRect, radius, radius);
-            }
-            else
-            {
-                painter.drawRect(cellRect);
-            }
+            drawCellShape(painter,
+                          cellRectAt(topLeft, row, col, cellPixelsValue, gap),
+                          cellPixelsValue,
+                          radius);
         }
     }
 
@@ -517,18 +528,10 @@ void BoardView::drawCellsDetailed(QPainter& painter,
         hoverCol <= range.lastCol)
     {
         painter.setBrush(kAliveHover);
-        const QRectF cellRect(topLeft.x() + static_cast<double>(hoverCol) * cellPixelsValue + gap / 2.0,
-                              topLeft.y() + static_cast<double>(hoverRow) * cellPixelsValue + gap / 2.0,
-                              std::max(1.0, cellPixelsValue - gap),
-                              std::max(1.0, cellPixelsValue - gap));
-        if (cellPixelsValue >= 6.0)
-        {
-            painter.drawRoundedRect(cellRect, radius, radius);
-        }
-        else
-        {
-            painter.drawRect(cellRect);
-        }
+        drawCellShape(painter,
+                      cellRectAt(topLeft, hoverRow, hoverCol, cellPixelsValue, gap),
+                      cellPixelsValue,
+                      radius);
     }
 }
 
@@ -767,34 +770,13 @@ void BoardView::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    const double oldPixels = cellPixels();
     const double factor = delta > 0 ? 1.15 : 1.0 / 1.15;
-    const double newPixels = std::max(kMinCellPixels, std::min(kMaxCellPixels, oldPixels * factor));
-    if (std::abs(newPixels - oldPixels) < 0.001)
-    {
-        return;
-    }
-
-    const QPointF oldTop = boardTopLeft();
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     const QPoint position = event->position().toPoint();
 #else
     const QPoint position = event->pos();
 #endif
-    const double anchorX = (static_cast<double>(position.x()) - oldTop.x()) / oldPixels;
-    const double anchorY = (static_cast<double>(position.y()) - oldTop.y()) / oldPixels;
-
-    m_auto_fit = false;
-    m_cell_pixels = newPixels;
-
-    const QPointF centered((static_cast<double>(width()) - static_cast<double>(boardWidth()) * newPixels) / 2.0,
-                           (static_cast<double>(height()) - static_cast<double>(boardHeight()) * newPixels) / 2.0);
-    m_pan = QPointF(static_cast<double>(position.x()) - anchorX * newPixels,
-                    static_cast<double>(position.y()) - anchorY * newPixels) -
-            centered;
-
-    clampPan();
-    update();
+    zoomAt(QPointF(position), factor);
     event->accept();
 }
 
