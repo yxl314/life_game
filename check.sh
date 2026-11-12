@@ -5,7 +5,7 @@ set -u
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$ROOT"
-JOBS=${JOBS:-4}
+JOBS=${JOBS:-8}
 STAGE=${1:-all}
 STATUS=0
 
