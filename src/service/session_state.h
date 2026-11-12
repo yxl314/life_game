@@ -2,7 +2,7 @@
 
 /**
  * @file session_state.h
- * @brief Persisted session value object.
+ * @brief 跨次运行持久化的会话值对象。
  */
 
 #include <QByteArray>
@@ -14,15 +14,15 @@
 namespace lifegame::service
 {
 
-/// @brief Everything persisted between runs.
+/// @brief 跨次运行持久化的全部内容。
 struct SessionState
 {
-    shared::AppSettings settings;                    ///< User settings.
-    QString boardRle;                                ///< Encoded board.
-    QString ruleNotation = QStringLiteral("B3/S23"); ///< Canonical rule.
-    domain::Boundary boundary = domain::Boundary::Dead; ///< Boundary policy.
-    int generation = 0;                              ///< Current generation.
-    QByteArray windowGeometry;                       ///< Saved window geometry.
+    shared::AppSettings settings;                       ///< 用户设置。
+    QString boardRle;                                   ///< 编码后的棋盘。
+    QString ruleNotation = QStringLiteral("B3/S23");    ///< 规范规则记法。
+    domain::Boundary boundary = domain::Boundary::Dead; ///< 边界策略。
+    int generation = 0;                                 ///< 当前代数。
+    QByteArray windowGeometry;                          ///< 保存的窗口几何。
 };
 
 } // namespace lifegame::service

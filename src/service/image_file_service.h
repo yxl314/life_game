@@ -2,7 +2,7 @@
 
 /**
  * @file image_file_service.h
- * @brief PNG image output port and service.
+ * @brief PNG 图像输出端口与服务。
  */
 
 #include <QString>
@@ -14,37 +14,36 @@ class QImage;
 namespace lifegame::service
 {
 
-/// @brief Replaceable PNG output port.
+/// @brief 可替换的 PNG 输出端口。
 class ImageFilePort
 {
 public:
-    /// @brief Allow deletion through the port interface.
+    /// @brief 允许通过端口接口删除实现。
     virtual ~ImageFilePort() = default;
 
     /**
-     * @brief Save an image as PNG.
-     * @param image Image to encode.
-     * @param path Destination path.
-     * @param detail Optional encoder error detail.
-     * @return FileError code.
+     * @brief 把图像保存为 PNG。
+     * @param image 待编码的图像。
+     * @param path 目标路径。
+     * @param detail 可选的编码器错误细节。
+     * @return 文件错误码。
      */
     virtual FileError savePng(const QImage& image, const QString& path, QString* detail = nullptr) const = 0;
 };
 
-/// @brief QImageWriter-backed PNG service.
+/// @brief 基于 QImageWriter 的 PNG 服务。
 class ImageFileService : public ImageFilePort
 {
 public:
-    /**
-     * @brief Encode the image with the PNG writer and write it to `path`.
-     *
-     * @param image Image to encode; a null image is rejected before touching the file.
-     * @param path Destination path.
-     * @param detail Optional encoder error detail.
-     * @return FileError code.
-     * @retval NullImage `image` is null.
-     * @retval EncodeFailed The writer rejected the image or the file could not be written.
-     */
+    /// @brief 用 PNG 写出器把图像编码到 `path`。
+    ///
+    /// 空图像在接触文件之前就被拒绝。
+    /// @param image 待编码的图像。
+    /// @param path 目标路径。
+    /// @param detail 可选的编码器错误细节。
+    /// @return 文件错误码。
+    /// @retval NullImage `image` 为空。
+    /// @retval EncodeFailed 写出器拒绝该图像，或文件写不进去。
     FileError savePng(const QImage& image, const QString& path, QString* detail = nullptr) const override;
 };
 

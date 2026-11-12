@@ -2,25 +2,24 @@
 
 /**
  * @file settings_error.h
- * @brief Typed settings persistence errors.
+ * @brief 类型化的设置持久化错误。
  */
 
 namespace lifegame::service
 {
 
-/// @brief Recoverable failures of loading or saving the session file.
+/// @brief 读写会话文件时可恢复的失败类型。
 enum class SettingsError
 {
-    None = 0,      ///< Success.
-    AccessError,   ///< File cannot be read/written.
-    FormatError,   ///< QSettings format is invalid.
-    CorruptData    ///< One or more values are malformed/clamped.
+    None = 0,      ///< 成功。
+    AccessError,   ///< 文件无法读取或写入。
+    FormatError,   ///< QSettings 格式非法。
+    CorruptData    ///< 一个或多个取值畸形，已被钳制或替换。
 };
 
-/// @brief Stable spelling of an error code for logs.
-///
-/// @param error Error code.
-/// @return Static name; "Unknown" for a value outside the enumeration.
+/// @brief 错误码的固定拼写，用于日志。
+/// @param error 错误码。
+/// @return 静态名称；枚举外的取值返回 "Unknown"。
 constexpr const char* settingsErrorName(SettingsError error) noexcept
 {
     switch (error)

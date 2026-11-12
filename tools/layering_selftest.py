@@ -107,9 +107,14 @@ def main() -> int:
         False,
     )
     ok &= expect(
-        "model Chinese",
-        {"src/model/model.h": "// 中文说明\n"},
+        "model Chinese literal",
+        {"src/model/model.h": 'inline const char* kMsg = "中文说明";\n'},
         False,
+    )
+    ok &= expect(
+        "model Chinese comment",
+        {"src/model/model.h": "// 中文注释是文档，不是显示文本\n"},
+        True,
     )
     ok &= expect(
         "all sources listed",

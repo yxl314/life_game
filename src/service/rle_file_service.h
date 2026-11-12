@@ -2,7 +2,7 @@
 
 /**
  * @file rle_file_service.h
- * @brief RLE file I/O port and service.
+ * @brief RLE 文件读写端口与服务。
  */
 
 #include <QString>
@@ -15,69 +15,63 @@
 namespace lifegame::service
 {
 
-/// @brief Result of reading and decoding an RLE file.
+/// @brief 读取并解码 RLE 文件的结果。
 struct RleReadResult
 {
-    std::optional<domain::DecodedDocument> document; ///< Decoded document on success.
-    FileError error = FileError::None;               ///< Typed file error.
-    domain::RleErrorInfo decodeError;                ///< RLE parser details on decode failure.
-    QString detail;                                  ///< Optional system detail.
+    std::optional<domain::DecodedDocument> document; ///< 成功时的解码文档。
+    FileError error = FileError::None;               ///< 类型化文件错误。
+    domain::RleErrorInfo decodeError;                ///< 解码失败时的 RLE 解析细节。
+    QString detail;                                  ///< 可选的系统细节。
 };
 
-/// @brief Replaceable RLE file I/O port.
+/// @brief 可替换的 RLE 文件读写端口。
 class RleFilePort
 {
 public:
-    /// @brief Allow deletion through the port interface.
+    /// @brief 允许通过端口接口删除实现。
     virtual ~RleFilePort() = default;
 
     /**
-     * @brief Read a file and decode it as RLE.
+     * @brief 读取文件并按 RLE 解码。
      *
-     * @param path File path.
-     * @return Decoded document or a typed file/decode error.
+     * @param path 文件路径。
+     * @return 解码文档，或类型化的文件/解码错误。
      */
     virtual RleReadResult read(const QString& path) const = 0;
 
     /**
-     * @brief Atomically write RLE text.
-     * @param path Destination path.
-     * @param text RLE text.
-     * @param detail Optional system error detail.
-     * @return FileError code.
+     * @brief 原子地写入 RLE 文本。
+     * @param path 目标路径。
+     * @param text RLE 文本。
+     * @param detail 可选的系统错误细节。
+     * @return 文件错误码。
      */
     virtual FileError write(const QString& path, const QString& text, QString* detail = nullptr) const = 0;
 };
 
-/// @brief File I/O only; RLE parsing is delegated to the pure domain codec.
+/// @brief 只做文件读写；RLE 解析交给纯领域编解码器。
 class RleFileService : public RleFilePort
 {
 public:
-    /**
-     * @brief Read at most 8 MiB, then decode the bytes as RLE.
-     *
-     * The size cap is enforced while reading rather than from file.size(),
-     * which is -1 for pipes and other special files.
-     *
-     * @param path File path.
-     * @return Decoded document or a typed file/decode error.
-     * @retval OpenFailed The file cannot be opened for reading.
-     * @retval TooLarge The file exceeds 8 MiB.
-     * @retval ReadFailed The read itself failed.
-     * @retval DecodeFailed The bytes are not a valid RLE document.
-     */
+    /// @brief 最多读 8 MiB，再把字节按 RLE 解码。
+    ///
+    /// 上限在读的过程中执行，而不依赖 file.size()——管道等特殊文件的
+    /// file.size() 是 -1。
+    /// @param path 文件路径。
+    /// @return 解码文档，或类型化的文件/解码错误。
+    /// @retval OpenFailed 文件无法以只读方式打开。
+    /// @retval TooLarge 文件超过 8 MiB。
+    /// @retval ReadFailed 读取本身失败。
+    /// @retval DecodeFailed 字节不是合法的 RLE 文档。
     RleReadResult read(const QString& path) const override;
 
-    /**
-     * @brief Write UTF-8 text through QSaveFile, so a failed write keeps the old file.
-     *
-     * @param path Destination path.
-     * @param text RLE text.
-     * @param detail Optional system error detail.
-     * @return FileError code.
-     * @retval OpenFailed The temporary file cannot be created.
-     * @retval WriteFailed Writing or committing the temporary file failed.
-     */
+    /// @brief 经 QSaveFile 写 UTF-8 文本，写失败时原文件保持不变。
+    /// @param path 目标路径。
+    /// @param text RLE 文本。
+    /// @param detail 可选的系统错误细节。
+    /// @return 文件错误码。
+    /// @retval OpenFailed 临时文件创建失败。
+    /// @retval WriteFailed 写入或提交临时文件失败。
     FileError write(const QString& path, const QString& text, QString* detail = nullptr) const override;
 };
 

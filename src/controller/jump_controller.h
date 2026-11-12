@@ -74,7 +74,7 @@ private slots:
     /// @param generations 回退的代数。
     void rewindBy(int generations);
     /// @brief 为刚开始的跳转创建并显示进度界面。
-    /// @param info 本次跳转的参数。
+    /// @param info 该次跳转的参数。
     void onJumpStarted(const lifegame::shared::JumpInfo& info);
     /// @brief 把已重放的代数推给进度界面。
     /// @param done 已重放的代数。

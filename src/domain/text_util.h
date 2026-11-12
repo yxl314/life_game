@@ -11,9 +11,9 @@
 namespace lifegame::domain::detail
 {
 
-/// @brief 去掉首尾的 ASCII 空白。
+/// @brief 去除首尾的 ASCII 空白。
 /// @param text 输入视图。
-/// @return 指向同一缓冲区、去掉空白后的视图。
+/// @return 指向同一缓冲区、去除空白后的视图。
 inline std::string_view trim(std::string_view text)
 {
     while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0)

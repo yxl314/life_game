@@ -2,18 +2,18 @@
 
 /**
  * @file life_stats.h
- * @brief Read-only population statistics.
+ * @brief 只读的种群统计。
  */
 
 namespace lifegame::shared
 {
 
-/// @brief Immutable snapshot of the statistics shown by the view.
+/// @brief 视图展示的统计数据的不可变快照。
 struct LifeStats
 {
-    int generation = 0;   ///< Current generation number.
-    int population = 0;   ///< Number of alive cells.
-    double density = 0.0; ///< Percentage of alive cells in [0, 100].
+    int generation = 0;   ///< 当前代数。
+    int population = 0;   ///< 活细胞数。
+    double density = 0.0; ///< 活细胞百分比，范围 [0, 100]。
 };
 
 } // namespace lifegame::shared

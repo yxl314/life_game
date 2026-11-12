@@ -56,7 +56,7 @@ public:
     void applyState(const PanelState& state);
 
     /// @brief 更新统计数字。
-    /// @param stats 要显示的统计。
+    /// @param stats 要显示的统计；负值按 0 显示。
     void setStats(const shared::LifeStats& stats);
 
     /// @brief 更新运行状态与开始/暂停按钮。
@@ -77,7 +77,7 @@ public:
     void setBoundary(domain::Boundary boundary);
 
     /// @brief 更新可回退的最早代数。
-    /// @param generation 最早可回退代数。
+    /// @param generation 最早可回退代数；负数按 0 处理。
     void setOldestGeneration(int generation);
 
     /// @brief 填充图案下拉框。
@@ -88,8 +88,8 @@ public:
     /// @param text 说明文字。
     void setPatternDescription(const QString& text);
 
-    /// @brief 设置速度并同步滑块。
-    /// @param speed 每秒演化代数；0 表示暂停。
+    /// @brief 设置速度并同步滑块与数值标签。
+    /// @param speed 每秒演化代数；0 表示暂停，超出范围时会被夹取。
     void setSpeed(int speed);
 
     /// @brief 返回当前速度。
@@ -113,7 +113,7 @@ public:
     void setGridVisible(bool visible);
 
     /// @brief 设置跳转粒度。
-    /// @param step 回退/快进的最小代数。
+    /// @param step 回退/快进的最小代数；小于 1 时按 1 处理。
     void setJumpStep(int step);
 
     /// @brief 返回当前跳转代数。
@@ -121,7 +121,7 @@ public:
     int jumpGenerations() const;
 
     /// @brief 设置棋盘尺寸输入框的步进。
-    /// @param step 步进格数。
+    /// @param step 步进格数；小于 1 时按 1 处理。
     void setSizeStep(int step);
 
 signals:

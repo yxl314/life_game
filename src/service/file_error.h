@@ -2,29 +2,28 @@
 
 /**
  * @file file_error.h
- * @brief Typed file and image errors.
+ * @brief 类型化的文件与图像错误。
  */
 
 namespace lifegame::service
 {
 
-/// @brief Recoverable infrastructure failures. The UI turns these into one message.
+/// @brief 可恢复的基础设施失败；界面把它们转成一条提示。
 enum class FileError
 {
-    None = 0,      ///< Success.
-    OpenFailed,    ///< Could not open the file.
-    ReadFailed,    ///< Read/error while loading.
-    WriteFailed,   ///< Write/flush failed.
-    DecodeFailed,  ///< Content is not valid RLE.
-    EncodeFailed,  ///< PNG encoder failed.
-    NullImage,     ///< Null image passed to the exporter.
-    TooLarge       ///< File exceeds the configured size cap.
+    None = 0,      ///< 成功。
+    OpenFailed,    ///< 无法打开文件。
+    ReadFailed,    ///< 读取过程中的错误。
+    WriteFailed,   ///< 写入或刷新失败。
+    DecodeFailed,  ///< 内容不是合法的 RLE。
+    EncodeFailed,  ///< PNG 编码器失败。
+    NullImage,     ///< 传给导出器的是空图像。
+    TooLarge       ///< 文件超过配置的大小上限。
 };
 
-/// @brief Stable spelling of an error code for logs.
-///
-/// @param error Error code.
-/// @return Static name; "Unknown" for a value outside the enumeration.
+/// @brief 错误码的固定拼写，用于日志。
+/// @param error 错误码。
+/// @return 静态名称；枚举外的取值返回 "Unknown"。
 constexpr const char* fileErrorName(FileError error) noexcept
 {
     switch (error)

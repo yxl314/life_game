@@ -38,7 +38,7 @@ class SessionSettingsPort;
 /**
  * @brief 应用/会话协调者：启动时恢复，退出时持久化。
  *
- * 持有本次运行归一化后的设置快照，并通过状态栏端口报告恢复/保存问题。
+ * 持有当前运行归一化后的设置快照，并通过状态栏端口报告恢复/保存问题。
  * 文件读写由 SessionService 负责；具体控制器只经 SessionSettingsPort 访问。
  */
 class SessionController : public QObject
@@ -90,7 +90,7 @@ private:
     std::unique_ptr<SessionService> m_service;     ///< 与 UI 无关的持久化服务。
     QMainWindow* m_window = nullptr;               ///< 窗口几何来源，可为空。
     view::MessageSink* m_messages = nullptr;       ///< 状态栏输出端口。
-    shared::AppSettings m_settings;                ///< 本次会话归一化后的设置。
+    shared::AppSettings m_settings;                ///< 当前会话归一化后的设置。
 };
 
 } // namespace lifegame::controller
