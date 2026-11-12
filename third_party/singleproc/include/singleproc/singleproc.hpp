@@ -91,13 +91,13 @@ public:
     int doorbell_fd() const noexcept;
 
 private:
-    int fd_;
-    State state_;
-    int error_code_;
+    int fd_ = -1;
+    State state_ = State::Error;
+    int error_code_ = 0;
     std::string socket_path_;
-    int doorbell_fd_;
+    int doorbell_fd_ = -1;
     DoorbellHandler doorbell_handler_;
-    bool doorbell_pending_;
+    bool doorbell_pending_ = false;
 };
 
 } // namespace singleproc

@@ -1,5 +1,6 @@
 #include <singleproc/singleproc.hpp>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstdlib>
@@ -26,11 +27,11 @@ constexpr int doorbell_backlog = 16; // 通知会合并，不需要很大的队�
 std::string default_runtime_dir()
 {
     const char* value = std::getenv("XDG_RUNTIME_DIR");
-    if (value != 0 && value[0] != '\0')
+    if (value != nullptr && value[0] != '\0')
     {
-        return std::string(value);
+        return {value};
     }
-    return std::string("/tmp");
+    return {"/tmp"};
 }
 
 /// 判断 key 是否能安全地作为文件名的一部分。
@@ -40,17 +41,14 @@ bool valid_key(const std::string& key)
     {
         return false;
     }
-    for (std::string::const_iterator iter = key.begin(); iter != key.end(); ++iter)
-    {
-        const char value = *iter;
-        const bool alpha = (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
-        const bool digit = value >= '0' && value <= '9';
-        if (!alpha && !digit && value != '.' && value != '_' && value != '-')
-        {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(key.begin(),
+                       key.end(),
+                       [](char value)
+                       {
+                           const bool alpha = (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
+                           const bool digit = value >= '0' && value <= '9';
+                           return alpha || digit || value == '.' || value == '_' || value == '-';
+                       });
 }
 
 /// 目录字符串中不能嵌入 NUL，否则路径会被系统调用静默截断。
@@ -238,7 +236,6 @@ namespace singleproc
 {
 
 Guard::Guard(const std::string& key, const std::string& runtime_dir)
-    : fd_(-1), state_(State::Error), error_code_(0), doorbell_fd_(-1), doorbell_pending_(false)
 {
     if (!valid_key(key) || !valid_directory(runtime_dir))
     {
@@ -408,7 +405,7 @@ bool Guard::process_doorbell(int timeout_ms)
 
     for (;;)
     {
-        const int client = ::accept(doorbell_fd_, 0, 0);
+        const int client = ::accept(doorbell_fd_, nullptr, nullptr);
         if (client < 0)
         {
             if (errno == EINTR)
