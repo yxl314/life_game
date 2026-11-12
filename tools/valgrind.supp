@@ -52,3 +52,40 @@
    ...
    obj:*/libQt6Gui.so*
 }
+
+# Qt 的 GTK3 平台主题插件（libqgtk3）在无头环境里会走 gtk_init，进而由
+# libgdk-3 打开显示、libepoxy 探测 GLX，申请的内存到进程结束都不释放。
+# 栈里全是系统库与 Qt 插件，没有本项目代码；是否走到这一步取决于插件发现
+# 顺序，所以同一份代码有时干干净净、有时多出几处——正是最该抑制的那类噪声。
+{
+   qt-platformtheme-gtk
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:*
+   ...
+   obj:*/libqgtk3.so
+}
+{
+   gtk-init
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:*
+   ...
+   obj:*/libgtk-3.so*
+}
+{
+   gdk-epoxy-init
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:*
+   ...
+   obj:*/libepoxy.so*
+}
+{
+   gdk-display-init
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:*
+   ...
+   obj:*/libgdk-3.so*
+}

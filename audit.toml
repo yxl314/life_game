@@ -84,7 +84,10 @@ checks = ["leaks"]
 # --errors-for-leak-kinds=definite：只按根块计错，间接块挂在根上，不重复计数。
 extra_args = ["--undef-value-errors=no",
               "--errors-for-leak-kinds=definite",
-              "--suppressions=tools/valgrind.supp"]
+              "--suppressions=tools/valgrind.supp",
+              # 默认 12 层会在 GUI 库里就截断，抑制规则按库名匹配时
+              # 看不到关键帧；加深到 24 层才是能用的报告
+              "--num-callers=24"]
 report = "reports/valgrind.txt"
 timeout_sec = 600
 
