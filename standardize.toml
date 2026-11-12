@@ -15,7 +15,7 @@
 [standardize]
 paths = ["src"]
 exclude = ["build", "third_party"]
-jobs = 8
+jobs = 24
 build_dir = "build/standardize"
 diff = "standardize.diff"
 stage_dir = ".standardize"

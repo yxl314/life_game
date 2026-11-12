@@ -34,7 +34,7 @@ enabled = true
 report = "reports/clang-tidy.txt"
 fail_on_warnings = true
 # 本机统一限制为 4 路并行。
-jobs = 8
+jobs = 24
 
 [cpd]
 enabled = true

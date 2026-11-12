@@ -5,7 +5,8 @@ set -u
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$ROOT"
-JOBS=${JOBS:-8}
+# 并行度自适应本机核数；显式给 JOBS=... 可覆盖
+JOBS=${JOBS:-$(nproc 2>/dev/null || echo 4)}
 STAGE=${1:-all}
 STATUS=0
 
