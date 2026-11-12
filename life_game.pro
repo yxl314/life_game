@@ -11,7 +11,16 @@ QT += core gui widgets concurrent
 
 TEMPLATE = app
 TARGET   = lifegame
-CONFIG  += release
+
+# 默认 release；Qt Creator / cpp-audit 的 Debug 配置会传入 CONFIG+=debug。
+# 不能无条件 CONFIG += release，否则 Debug 也会带 -O2 和 QT_NO_DEBUG，
+# 既没有优化关闭，也会丢掉调试符号。
+CONFIG(debug, debug|release) {
+    QMAKE_CXXFLAGS_DEBUG += -O0 -g
+} else {
+    CONFIG  += release
+}
+
 CONFIG  -= app_bundle
 
 LIFEGAME_ROOT = $$PWD
