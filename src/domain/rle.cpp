@@ -209,6 +209,24 @@ std::string sanitizeTitle(std::string_view title)
     return result;
 }
 
+/**
+ * @brief Make sure the row vector has an entry for @p row.
+ *
+ * The 'o'/'O' branch and the '$' branch both grow the row vector before
+ * writing. Duplicating the growth means a future bound (for example an upper
+ * limit on rows) has to be added twice.
+ *
+ * @param rows Row buffer; grows on demand.
+ * @param row Row index that must exist afterwards.
+ */
+void ensureRow(std::vector<std::vector<Cell>>& rows, std::int64_t row)
+{
+    if (static_cast<std::int64_t>(rows.size()) <= row)
+    {
+        rows.resize(static_cast<std::size_t>(row) + 1);
+    }
+}
+
 } // namespace
 
 RleDecodeResult decodeRle(std::string_view text)
@@ -339,10 +357,7 @@ RleDecodeResult decodeRle(std::string_view text)
             {
                 return {std::nullopt, makeError(RleError::TooLarge, text, sourceOffsetForBody(bodyLines, i))};
             }
-            if (static_cast<std::int64_t>(rows.size()) <= row)
-            {
-                rows.resize(static_cast<std::size_t>(row) + 1);
-            }
+            ensureRow(rows, row);
             std::vector<Cell>& target = rows[static_cast<std::size_t>(row)];
             if (static_cast<std::int64_t>(target.size()) < col + count)
             {
@@ -364,10 +379,7 @@ RleDecodeResult decodeRle(std::string_view text)
             {
                 return {std::nullopt, makeError(RleError::TooLarge, text, sourceOffsetForBody(bodyLines, i))};
             }
-            if (static_cast<std::int64_t>(rows.size()) <= row)
-            {
-                rows.resize(static_cast<std::size_t>(row) + 1);
-            }
+            ensureRow(rows, row);
             break;
 
         case '!':

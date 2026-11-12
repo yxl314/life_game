@@ -39,9 +39,10 @@ jobs = 24
 [cpd]
 enabled = true
 dirs = ["src"]
-# 70 token 是工具默认值：既能抓出复制粘贴的函数体，又不会被绘制分支的
-# 必要结构重复刷屏。当前在 70 token 下无重复。
-min_tokens = 70
+# 50 token：工具的默认阈值是 70，但这两个工程在 50 下也已经是零重复，
+# 收紧一档能把新出现的小规模复制粘贴挡在门外，又不会被绘制分支的
+# 必要结构重复刷屏。
+min_tokens = 50
 report = "reports/cpd.txt"
 
 [asan]

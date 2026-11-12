@@ -8,6 +8,31 @@
 namespace lifegame::domain
 {
 
+namespace
+{
+
+/**
+ * @brief Reset the stats slot and reject a null output grid.
+ *
+ * Both evolve entry points start with the same two guards. Keeping them in one
+ * place means a new guard (for example "refuse to write into the source grid")
+ * cannot be added to only one of them.
+ *
+ * @param next Output grid; may be null.
+ * @param stats Optional stats accumulator; reset when present.
+ * @return False when the caller must return immediately.
+ */
+bool prepareEvolve(Grid* next, GridStats* stats)
+{
+    if (stats != nullptr)
+    {
+        *stats = GridStats{};
+    }
+    return next != nullptr;
+}
+
+} // namespace
+
 Grid::Grid() = default;
 
 Grid::Grid(int width, int height)
@@ -50,13 +75,7 @@ bool Grid::inBounds(int row, int col) const
 
 bool Grid::cell(int row, int col) const
 {
-    if (!inBounds(row, col))
-    {
-        return false;
-    }
-    const std::size_t index = static_cast<std::size_t>(row) * static_cast<std::size_t>(m_width) +
-                              static_cast<std::size_t>(col);
-    return index < m_cells.size() && m_cells[index] != kDead;
+    return cell_at(m_cells, m_width, row, col);
 }
 
 void Grid::setCell(int row, int col, bool alive)
@@ -186,11 +205,7 @@ void Grid::computeNext(const Grid& current,
                        Boundary boundary,
                        GridStats* stats)
 {
-    if (stats != nullptr)
-    {
-        *stats = GridStats{};
-    }
-    if (next == nullptr)
+    if (!prepareEvolve(next, stats))
     {
         return;
     }
@@ -215,11 +230,7 @@ void Grid::computeRows(const Grid& current,
                        int rowEnd,
                        GridStats* stats)
 {
-    if (stats != nullptr)
-    {
-        *stats = GridStats{};
-    }
-    if (next == nullptr)
+    if (!prepareEvolve(next, stats))
     {
         return;
     }

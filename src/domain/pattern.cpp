@@ -26,13 +26,7 @@ std::optional<Pattern> Pattern::fromCells(std::string id,
 
 bool Pattern::alive(int row, int col) const
 {
-    if (row < 0 || row >= m_height || col < 0 || col >= m_width)
-    {
-        return false;
-    }
-    const std::size_t index = static_cast<std::size_t>(row) * static_cast<std::size_t>(m_width) +
-                              static_cast<std::size_t>(col);
-    return index < m_cells.size() && m_cells[index] != kDead;
+    return cell_at(m_cells, m_width, row, col);
 }
 
 bool Pattern::isConsistent() const

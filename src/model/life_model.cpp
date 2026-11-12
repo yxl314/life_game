@@ -29,6 +29,33 @@ std::shared_ptr<const domain::Grid> makeSnapshot(const domain::Grid& board)
     return std::shared_ptr<const domain::Grid>(copy);
 }
 
+/**
+ * @brief Stamp every alive cell of @p pattern into @p board with an offset.
+ *
+ * Used both when the user places a pattern at the board centre and when a
+ * loaded document is turned into a board. Duplicating the double loop means a
+ * future change (for example honouring a selection mask) has to be made twice.
+ *
+ * @param board Target board; cells outside its bounds are ignored.
+ * @param pattern Source pattern.
+ * @param topRow Row offset applied to the pattern.
+ * @param topCol Column offset applied to the pattern.
+ */
+void stampPattern(domain::Grid& board, const domain::Pattern& pattern,
+                  int topRow, int topCol)
+{
+    for (int row = 0; row < pattern.height(); ++row)
+    {
+        for (int col = 0; col < pattern.width(); ++col)
+        {
+            if (pattern.alive(row, col))
+            {
+                board.setCell(topRow + row, topCol + col, true);
+            }
+        }
+    }
+}
+
 } // namespace
 
 LifeModel::LifeModel(QObject* parent)
@@ -302,16 +329,7 @@ CommandResult LifeModel::placePattern(const domain::Pattern& pattern, int center
     }
 
     pauseForEdit();
-    for (int row = 0; row < pattern.height(); ++row)
-    {
-        for (int col = 0; col < pattern.width(); ++col)
-        {
-            if (pattern.alive(row, col))
-            {
-                m_board.setCell(topRow + row, topCol + col, true);
-            }
-        }
-    }
+    stampPattern(m_board, pattern, topRow, topCol);
     m_population = m_board.population();
     invalidateHistoryFrom(m_generation);
     STACKLOG_DEBUG() << "pattern placed center " << centerRow << ' ' << centerCol << " size "
@@ -533,16 +551,7 @@ CommandResult LifeModel::loadDocument(const domain::DecodedDocument& document)
         STACKLOG_ERROR() << "document load failed reason=out_of_memory";
         return CommandResult::OutOfMemory;
     }
-    for (int row = 0; row < pattern.height(); ++row)
-    {
-        for (int col = 0; col < pattern.width(); ++col)
-        {
-            if (pattern.alive(row, col))
-            {
-                board->setCell(row, col, true);
-            }
-        }
-    }
+    stampPattern(*board, pattern, 0, 0);
 
     const CommandResult replaced = replaceBoard(std::move(board), 0);
     if (replaced != CommandResult::Success)
