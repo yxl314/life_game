@@ -30,16 +30,10 @@ rules = []
 
 [tidy]
 enabled = true
-# 排除两个对本项目价值很低的风格类检查：
-# - performance-enum-size 会对每个 enum 要求改底层类型（Qt 元类型宏还会重复报）
-# - bugprone-easily-swappable-parameters 对 (row, col) 这类领域参数大量误报
-checks = ["clang-analyzer-*", "bugprone-*", "cert-*", "portability-*", "performance-*",
-          "-bugprone-easily-swappable-parameters", "-performance-enum-size"]
-# 只报告项目自己的头文件，避免 Qt/系统头文件的噪音。
-header_filter = ".*/src/.*"
+# clang-tidy 检查集由项目根目录 .clang-tidy 提供。
 report = "reports/clang-tidy.txt"
 fail_on_warnings = true
-# 本机统一限制为 6 路并行（clang-tidy 与 ASan/Valgrind 构建共用）。
+# 本机统一限制为 4 路并行。
 jobs = 4
 
 [cpd]

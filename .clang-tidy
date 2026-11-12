@@ -1,0 +1,4 @@
+---
+Checks: '-*,clang-analyzer-*,bugprone-*,cert-*,portability-*,performance-*,-bugprone-easily-swappable-parameters,-performance-enum-size'
+HeaderFilterRegex: 'src/.*'
+FormatStyle: file
