@@ -29,8 +29,8 @@ struct SettingsLoadResult
  * @brief 基于 QSettings 的持久化；不含界面，也不含模型状态机。
  *
  * 键名只在本类内部出现，调用方只看得到 SessionState。每个标量在读取时
- * 都会做范围检查，因此手改过的文件只会退化成默认值加
- * SettingsError::CorruptData，而不会让恢复整体失败。
+ * 都会做范围检查：类型不可解析的值回落到默认值并置 SettingsError::CorruptData，
+ * 可解析但越界的值被钳制到边界、错误保持 None。两种处理都不会让恢复整体失败。
  */
 class SettingsStore
 {

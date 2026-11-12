@@ -82,7 +82,7 @@ static void installAutoClose(QWidget* window)
 
 int main(int argc, char* argv[])
 {
-    // Qt 6 默认启用高 DPI 缩放和高 DPI 位图，不再需要设置旧属性。
+    // Qt 6 默认启用高 DPI 缩放与高 DPI 位图，无需显式设置属性。
     QApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("life-game"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("life-game.local"));

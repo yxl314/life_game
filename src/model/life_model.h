@@ -120,9 +120,9 @@ public:
     CommandResult toggleCell(int row, int col);
 
     /// @brief 批量设置一组坐标的细胞状态。
-    /// @param cells 坐标列表，每个元素为（行，列）。
-    /// @param cells 中越界的坐标会被忽略；没有可修改的界内细胞时，
-    ///              含越界坐标返回 OutOfBounds，否则返回 NoChange。
+    /// @param cells 坐标列表，每个元素为（行，列）。越界的坐标会被忽略；
+    ///              没有可修改的界内细胞时，含越界坐标返回 OutOfBounds，
+    ///              否则返回 NoChange。
     /// @param alive 目标状态。
     /// @return Success、NoChange、OutOfBounds 或 Busy。
     CommandResult setCells(const std::vector<std::pair<int, int>>& cells, bool alive);
