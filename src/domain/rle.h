@@ -20,16 +20,20 @@ namespace lifegame::domain
 /// @brief Stable RLE error codes; the domain never returns user-facing prose.
 enum class RleError
 {
-    None = 0,
-    EmptyBody,
-    InvalidHeader,
-    InvalidCharacter,
-    RunTooLong,
-    TooLarge,
-    InvalidRule,
-    MissingTerminator
+    None = 0,           ///< No error.
+    EmptyBody,          ///< The body carries no cells.
+    InvalidHeader,      ///< The x/y or rule header is malformed.
+    InvalidCharacter,   ///< A character outside the RLE alphabet.
+    RunTooLong,         ///< A run count is out of range.
+    TooLarge,           ///< The decoded area or the input exceeds the size limits.
+    InvalidRule,        ///< The rule header is not valid B/S notation.
+    MissingTerminator   ///< The body ends without the '!' terminator.
 };
 
+/// @brief Stable spelling of an error code for logs.
+///
+/// @param error Error code.
+/// @return Static name; "Unknown" for a value outside the enumeration.
 constexpr const char* rleErrorName(RleError error) noexcept
 {
     switch (error)

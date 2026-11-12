@@ -2,7 +2,7 @@
 
 /**
  * @file text_util.h
- * @brief Small internal text helpers shared by domain parsers.
+ * @brief 领域解析器共用的小型内部文本辅助函数。
  */
 
 #include <cctype>
@@ -11,11 +11,9 @@
 namespace lifegame::domain::detail
 {
 
-/**
- * @brief Remove leading and trailing ASCII whitespace.
- * @param text Input view.
- * @return Trimmed view into the same buffer.
- */
+/// @brief 去掉首尾的 ASCII 空白。
+/// @param text 输入视图。
+/// @return 指向同一缓冲区、去掉空白后的视图。
 inline std::string_view trim(std::string_view text)
 {
     while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0)

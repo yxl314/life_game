@@ -2,7 +2,7 @@
 
 /**
  * @file line_raster.h
- * @brief Bresenham line rasterization helper.
+ * @brief Bresenham 直线栅格化辅助函数。
  */
 
 #include <vector>
@@ -10,21 +10,19 @@
 namespace lifegame::controller
 {
 
-/// @brief Integer cell coordinate.
+/// @brief 整数格子坐标。
 struct CellPosition
 {
-    int row = 0; ///< Row index.
-    int col = 0; ///< Column index.
+    int row = 0; ///< 行号。
+    int col = 0; ///< 列号。
 };
 
-/**
- * @brief Rasterize a Bresenham line between two cells, inclusive.
- * @param fromRow Start row.
- * @param fromCol Start column.
- * @param toRow End row.
- * @param toCol End column.
- * @return Ordered cell positions along the line.
- */
+/// @brief 把两个格子之间的 Bresenham 直线（含两端）栅格化。
+/// @param fromRow 起点行号。
+/// @param fromCol 起点列号。
+/// @param toRow 终点行号。
+/// @param toCol 终点列号。
+/// @return 沿直线排列的格子坐标，按从起点到终点的顺序。
 std::vector<CellPosition> rasterLine(int fromRow, int fromCol, int toRow, int toCol);
 
 } // namespace lifegame::controller

@@ -13,11 +13,10 @@
 namespace lifegame::domain
 {
 
-/**
- * @brief Built-in patterns (stable IDs and shapes only).
- *
- * Display names and descriptions live in the view layer.
- */
+/// @brief Built-in patterns (stable IDs and shapes only).
+///
+/// Display names and descriptions live in the view layer.
+///
 /// @return Built-in pattern catalog in display order.
 const std::vector<Pattern>& builtinPatterns();
 

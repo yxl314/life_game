@@ -2,7 +2,7 @@
 
 /**
  * @file settings_dialog.h
- * @brief Settings value editor view.
+ * @brief 设置值的编辑视图。
  */
 
 #include <QDialog>
@@ -14,25 +14,29 @@ class QSpinBox;
 namespace lifegame::view
 {
 
-/// Pure view: reads/writes AppSettings, owns no persistence and no model.
+/// @brief 纯视图：读写 AppSettings，不负责持久化，也不依赖模型。
 class SettingsDialog : public QDialog
 {
     Q_OBJECT
 
 public:
+    /// @brief 构造设置对话框并创建输入控件。
+    /// @param parent 父控件。
     explicit SettingsDialog(QWidget* parent = nullptr);
 
-    /// @param values Current settings to display; unedited fields are retained.
+    /// @brief 显示设置值。
+    /// @param values 当前设置；未编辑的字段会保留。
     void setValues(const shared::AppSettings& values);
 
-    /// @return Edited settings merged with retained fields.
+    /// @brief 返回编辑后的设置。
+    /// @return 已编辑字段与保留字段合并后的设置。
     shared::AppSettings values() const;
 
 private:
-    QSpinBox* m_jumpStepSpin = nullptr;
-    QSpinBox* m_sizeStepSpin = nullptr;
-    QSpinBox* m_snapshotSpin = nullptr;
-    shared::AppSettings m_base;
+    QSpinBox* m_jumpStepSpin = nullptr; ///< 跳转粒度输入框。
+    QSpinBox* m_sizeStepSpin = nullptr; ///< 尺寸粒度输入框。
+    QSpinBox* m_snapshotSpin = nullptr; ///< 快照间隔输入框。
+    shared::AppSettings m_base; ///< 打开时传入、未编辑的基线设置。
 };
 
 } // namespace lifegame::view

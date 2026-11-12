@@ -2,7 +2,7 @@
 
 /**
  * @file session_settings.h
- * @brief Narrow port between session persistence and input/controller state.
+ * @brief 会话持久化与输入/控制器状态之间的窄端口。
  */
 
 #include "shared/app_settings.h"
@@ -11,21 +11,24 @@ namespace lifegame::controller
 {
 
 /**
- * @brief Applies restored settings to controllers and captures current input state.
+ * @brief 把恢复的设置下发给控制器，并采集当前的输入状态。
  *
- * SessionController owns persistence and the lifecycle; it must not know the
- * concrete BoardController/JumpController/SimulationController. The composition
- * root supplies an implementation of this port.
+ * SessionController 负责持久化与生命周期，不应认识具体的
+ * BoardController/JumpController/SimulationController；由组装根提供本端口的
+ * 实现。
  */
 class SessionSettingsPort
 {
 public:
+    /// @brief 允许通过端口接口删除实现。
     virtual ~SessionSettingsPort() = default;
 
-    /// @param settings Settings to push into controllers and passive views.
+    /// @brief 把设置下发给控制器与被动视图。
+    /// @param settings 要下发的设置。
     virtual void apply(const shared::AppSettings& settings) = 0;
 
-    /// @return Current controller-owned input settings.
+    /// @brief 采集控制器侧当前的输入设置。
+    /// @return 当前输入设置。
     virtual shared::AppSettings capture() const = 0;
 };
 

@@ -2,7 +2,7 @@
 
 /**
  * @file grid.h
- * @brief Board storage and row-parallel Life evolution.
+ * @brief 棋盘存储与按行并行的生命演化。
  */
 
 #include <cstddef>
@@ -18,145 +18,151 @@
 namespace lifegame::domain
 {
 
-/// @brief Aggregate statistics produced while computing a generation.
+/// @brief 计算一代时产出的统计量。
 struct GridStats
 {
-    int population = 0; ///< Alive cells in the computed range/board.
-    bool changed = false; ///< True when any computed cell differs from its source.
+    int population = 0;   ///< 计算范围内的活细胞数。
+    bool changed = false; ///< 是否有任一格子与源状态不同。
 };
 
 /**
- * @brief Heap-backed board with one contiguous active-cell vector.
+ * @brief 堆上存储、活动细胞集中在一个连续向量里的棋盘。
  *
- * Storage is sized to the active width() * height() area only, so a small
- * board does not pay for a 1.5M-cell buffer. The vector is reused by the step
- * pipeline when dimensions are unchanged, and the Grid object itself stays
- * small enough to live on the stack. This is important for 1500x1000 boards.
+ * 存储只按当前 width() * height() 的活动区域分配，小棋盘不会为 150 万格
+ * 付费；尺寸不变时向量由演化流程复用；Grid 对象本身很小，可以放在栈上，
+ * 这对 1500x1000 的棋盘很重要。
  */
 class Grid
 {
 public:
-    static constexpr int kMaxWidth = kMaxBoardWidth;   ///< Maximum supported width.
-    static constexpr int kMaxHeight = kMaxBoardHeight; ///< Maximum supported height.
-    static constexpr int kMaxCells = kMaxWidth * kMaxHeight; ///< Maximum supported cells.
+    static constexpr int kMaxWidth = kMaxBoardWidth;   ///< 支持的最大宽度。
+    static constexpr int kMaxHeight = kMaxBoardHeight; ///< 支持的最大高度。
+    static constexpr int kMaxCells = kMaxWidth * kMaxHeight; ///< 支持的最大格数。
 
-    /// @brief Construct an empty (zero-sized) board.
+    /// @brief 构造一个空的（零尺寸）棋盘。
     Grid();
 
     /**
-     * @brief Construct a board and allocate its active storage.
-     * @param width Requested width (clamped to [0, kMaxWidth]).
-     * @param height Requested height (clamped to [0, kMaxHeight]).
+     * @brief 构造棋盘并分配其活动存储。
+     * @param width 请求的宽度（钳制到 [0, kMaxWidth]）。
+     * @param height 请求的高度（钳制到 [0, kMaxHeight]）。
      */
     explicit Grid(int width, int height);
 
     /**
-     * @brief Resize the active area.
-     * @param width New width.
-     * @param height New height.
+     * @brief 调整活动区域。
+     * @param width 新宽度。
+     * @param height 新高度。
      *
-     * When dimensions change the storage is sized to the new active area and
-     * cleared. When dimensions and storage are unchanged this is a no-op:
-     * callers that overwrite every active cell (the step pipeline) avoid a
-     * large memset per generation.
+     * 尺寸变化时按新活动区域重新分配并清零；尺寸与存储都没变时是空操作，
+     * 这样每格都会重写的演化流程可以省掉每次一代的大块 memset。
      */
     void resize(int width, int height);
 
-    /// @brief Clear all active cells without changing the dimensions.
+    /// @brief 清空所有活动细胞，不改变尺寸。
     void clear();
 
-    /// @return Active width in cells.
+    /// @brief 查询活动宽度。
+    /// @return 活动宽度（格）。
     constexpr int width() const noexcept
     {
         return m_width;
     }
 
-    /// @return Active height in cells.
+    /// @brief 查询活动高度。
+    /// @return 活动高度（格）。
     constexpr int height() const noexcept
     {
         return m_height;
     }
 
-    /// @param row Row index.
-    /// @param col Column index.
-    /// @return True when the coordinate is inside the active area.
+    /// @brief 判断坐标是否落在活动区域内。
+    /// @param row 行号。
+    /// @param col 列号。
+    /// @return 坐标在活动区域内时返回 true。
     bool inBounds(int row, int col) const;
 
-    /// @param row Row index.
-    /// @param col Column index.
-    /// @return True when the cell is alive; false for dead or out-of-bounds.
+    /// @brief 读取一个细胞。
+    /// @param row 行号。
+    /// @param col 列号。
+    /// @return 细胞存活时返回 true；死细胞或越界返回 false。
     bool cell(int row, int col) const;
 
     /**
-     * @brief Set one cell.
-     * @param row Row index.
-     * @param col Column index.
-     * @param alive New state.
-     * @note Out-of-bounds coordinates are ignored.
+     * @brief 设置一个细胞。
+     * @param row 行号。
+     * @param col 列号。
+     * @param alive 新状态。
+     * @note 越界坐标被忽略。
      */
     void setCell(int row, int col, bool alive);
 
     /**
-     * @brief Toggle an in-bounds cell.
-     * @param row Row index.
-     * @param col Column index.
-     * @return New state, or std::nullopt when out of bounds.
+     * @brief 取反一个界内细胞。
+     * @param row 行号。
+     * @param col 列号。
+     * @return 新状态；越界时返回 std::nullopt。
      */
     std::optional<bool> toggleCell(int row, int col);
 
-    /// @return Number of alive cells in the active area.
+    /// @brief 统计活动区域的活细胞数。
+    ///
+    /// 需要扫描整个活动存储，代价与 width() * height() 成正比。
+    /// @return 活动区域的活细胞数。
     int population() const;
 
     /**
-     * @brief Count the eight neighbours of one cell.
-     * @param row Row index.
-     * @param col Column index.
-     * @param boundary Boundary policy.
-     * @return Neighbour count in [0, 8].
+     * @brief 统计一个格子的八个邻居。
+     * @param row 行号。
+     * @param col 列号。
+     * @param boundary 边界策略。
+     * @return [0, 8] 内的邻居数。
      */
     int neighbourCount(int row, int col, Boundary boundary) const;
 
     /**
-     * @brief Evolve one generation in place (serial).
-     * @param rule Life-like rule.
-     * @param boundary Boundary policy.
-     * @note Primarily for tests and single-step; the async pipeline uses
-     *       computeNext()/computeRows().
+     * @brief 原地串行演化一代。
+     * @param rule 生命类规则。
+     * @param boundary 边界策略。
+     * @note 主要用于测试与单步；异步流程走 computeNext()/computeRows()。
      */
     void advance(const Rule& rule, Boundary boundary);
 
     /**
-     * @brief Fill the board randomly.
-     * @param densityPercent Alive percentage in [0, 100].
-     * @param seed Deterministic RNG seed.
+     * @brief 按密度随机填充棋盘。
+     * @param densityPercent 活细胞百分比（[0, 100]）。
+     * @param seed 确定性的随机种子。
      */
     void randomize(int densityPercent, std::uint32_t seed);
 
-    /// @param other Board to compare.
-    /// @return True when dimensions and every active cell are equal.
+    /// @brief 比较尺寸与每个活动细胞。
+    /// @param other 待比较的棋盘。
+    /// @return 尺寸与所有活动细胞都相同时返回 true。
     bool equals(const Grid& other) const;
 
-    /// @return Number of bytes currently allocated for active cells.
+    /// @brief 查询活动存储的字节数。
+    /// @return 当前为活动细胞分配的字节数。
     std::size_t activeCellStorage() const noexcept
     {
         return m_cells.size();
     }
 
-    /// @return Read-only pointer to the active storage (never null for non-empty).
+    /// @brief 访问活动存储。
+    /// @return 指向活动存储的只读指针（非空棋盘上不会为空）。
     const Cell* data() const
     {
         return m_cells.data();
     }
 
     /**
-     * @brief Compute a whole generation into `next` (serial).
+     * @brief 串行地把整代结果算进 `next`。
      *
-     * @param current Source generation; must not alias `next`.
-     * @param next Output generation; resized to `current` dimensions.
-     * @param rule Life-like rule.
-     * @param boundary Boundary policy.
-     * @param stats Optional output statistics; reset before computing.
-     * @note `next` must not alias `current`.
+     * @param current 源代，不能与 `next` 别名。
+     * @param next 输出代，会调整到 `current` 的尺寸。
+     * @param rule 生命类规则。
+     * @param boundary 边界策略。
+     * @param stats 可选的输出统计，计算前会被重置。
+     * @note `next` 不能与 `current` 是同一个对象。
      */
     static void computeNext(const Grid& current,
                             Grid* next,
@@ -165,17 +171,16 @@ public:
                             GridStats* stats = nullptr);
 
     /**
-     * @brief Compute a half-open row range into `next`.
+     * @brief 把半开行区间 [rowBegin, rowEnd) 算进 `next`。
      *
-     * @param current Read-only source generation.
-     * @param next Output generation; must have the same dimensions.
-     * @param rule Life-like rule.
-     * @param boundary Boundary policy.
-     * @param rowBegin First row (inclusive).
-     * @param rowEnd One-past-last row (exclusive).
-     * @param stats Optional output statistics for this range; reset first.
-     * @note Different ranges only read `current` and write disjoint rows of
-     *       `next`, so they may run concurrently.
+     * @param current 只读的源代。
+     * @param next 输出代，尺寸必须与源代相同。
+     * @param rule 生命类规则。
+     * @param boundary 边界策略。
+     * @param rowBegin 起始行（含）。
+     * @param rowEnd 结束行（不含）。
+     * @param stats 可选的区间统计，计算前会被重置。
+     * @note 不同区间只读 `current` 并写 `next` 中互不相交的行，可以并发执行。
      */
     static void computeRows(const Grid& current,
                             Grid* next,
@@ -186,9 +191,9 @@ public:
                             GridStats* stats = nullptr);
 
 private:
-    int m_width = 0;
-    int m_height = 0;
-    std::vector<Cell> m_cells;
+    int m_width = 0;           ///< 活动宽度。
+    int m_height = 0;          ///< 活动高度。
+    std::vector<Cell> m_cells; ///< 活动区域的行主序细胞。
 };
 
 } // namespace lifegame::domain

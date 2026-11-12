@@ -2,7 +2,7 @@
 
 /**
  * @file dialogs.h
- * @brief Localized message-box helpers.
+ * @brief 本地化的消息框辅助函数。
  */
 
 #include <QString>
@@ -12,23 +12,23 @@ class QWidget;
 namespace lifegame::view
 {
 
-/// @brief Show a Chinese-labeled warning box.
-/// @param parent Dialog parent.
-/// @param title Dialog title.
-/// @param text Warning text.
+/// @brief 显示中文标签的警告框。
+/// @param parent 对话框父窗口。
+/// @param title 对话框标题。
+/// @param text 警告正文。
 void showWarning(QWidget* parent, const QString& title, const QString& text);
 
-/// @brief Show the keyboard/mouse controls help.
-/// @param parent Dialog parent.
+/// @brief 显示键鼠操作说明。
+/// @param parent 对话框父窗口。
 void showControlsHelp(QWidget* parent);
 
-/// @brief Show the application about box.
-/// @param parent Dialog parent.
-/// @param version Application version.
+/// @brief 显示应用关于框。
+/// @param parent 对话框父窗口。
+/// @param version 应用版本。
 void showAbout(QWidget* parent, const QString& version);
 
-/// @brief Show the Qt about box.
-/// @param parent Dialog parent.
+/// @brief 显示 Qt 关于框。
+/// @param parent 对话框父窗口。
 void showAboutQt(QWidget* parent);
 
 } // namespace lifegame::view

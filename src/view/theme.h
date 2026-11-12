@@ -2,7 +2,7 @@
 
 /**
  * @file theme.h
- * @brief Dark Fusion theme and application icon.
+ * @brief 深色 Fusion 主题与应用图标。
  */
 
 #include <QIcon>
@@ -12,11 +12,12 @@ class QApplication;
 namespace lifegame::view::theme
 {
 
-/// @brief Apply the dark Fusion look. Must run before creating windows.
-/// @param app Application instance.
+/// @brief 应用深色 Fusion 外观；必须在创建窗口前调用。
+/// @param app 应用实例。
 void apply(QApplication& app);
 
-/// @return Programmatically drawn application icon.
+/// @brief 生成程序化绘制的应用图标。
+/// @return 应用图标。
 QIcon appIcon();
 
 } // namespace lifegame::view::theme

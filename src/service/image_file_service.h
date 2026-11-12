@@ -18,6 +18,7 @@ namespace lifegame::service
 class ImageFilePort
 {
 public:
+    /// @brief Allow deletion through the port interface.
     virtual ~ImageFilePort() = default;
 
     /**
@@ -34,6 +35,16 @@ public:
 class ImageFileService : public ImageFilePort
 {
 public:
+    /**
+     * @brief Encode the image with the PNG writer and write it to `path`.
+     *
+     * @param image Image to encode; a null image is rejected before touching the file.
+     * @param path Destination path.
+     * @param detail Optional encoder error detail.
+     * @return FileError code.
+     * @retval NullImage `image` is null.
+     * @retval EncodeFailed The writer rejected the image or the file could not be written.
+     */
     FileError savePng(const QImage& image, const QString& path, QString* detail = nullptr) const override;
 };
 

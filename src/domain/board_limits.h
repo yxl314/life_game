@@ -2,23 +2,23 @@
 
 /**
  * @file board_limits.h
- * @brief Shared board extent and default-size limits.
+ * @brief 棋盘范围与默认尺寸等共享上限。
  */
 
 namespace lifegame::domain
 {
 
 /**
- * @brief Board limits shared by domain, model, view and persistence.
+ * @brief 由领域、模型、视图与持久化共享的棋盘上限。
  *
- * Keeping these values in one header prevents UI ranges, RLE limits and
- * storage capacity from drifting apart.
+ * 把这些数值放在同一个头文件里，界面范围、RLE 上限与存储容量就不会各写
+ * 一份而互相漂移。
  */
-inline constexpr int kMinBoardExtent = 20; ///< Minimum width and height in cells.
-inline constexpr int kMaxBoardWidth = 1500; ///< Maximum width (x axis) in cells.
-inline constexpr int kMaxBoardHeight = 1000; ///< Maximum height (y axis) in cells.
+inline constexpr int kMinBoardExtent = 20; ///< 宽高的最小格数。
+inline constexpr int kMaxBoardWidth = 1500; ///< 最大宽度（x 轴）格数。
+inline constexpr int kMaxBoardHeight = 1000; ///< 最大高度（y 轴）格数。
 
-inline constexpr int kDefaultBoardWidth = 250; ///< Default board width.
-inline constexpr int kDefaultBoardHeight = 200; ///< Default board height.
+inline constexpr int kDefaultBoardWidth = 250; ///< 默认棋盘宽度。
+inline constexpr int kDefaultBoardHeight = 200; ///< 默认棋盘高度。
 
 } // namespace lifegame::domain

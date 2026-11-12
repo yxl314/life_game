@@ -8,6 +8,7 @@
 namespace lifegame::service
 {
 
+/// @brief Recoverable failures of loading or saving the session file.
 enum class SettingsError
 {
     None = 0,      ///< Success.
@@ -16,6 +17,10 @@ enum class SettingsError
     CorruptData    ///< One or more values are malformed/clamped.
 };
 
+/// @brief Stable spelling of an error code for logs.
+///
+/// @param error Error code.
+/// @return Static name; "Unknown" for a value outside the enumeration.
 constexpr const char* settingsErrorName(SettingsError error) noexcept
 {
     switch (error)

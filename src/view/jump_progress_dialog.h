@@ -2,7 +2,7 @@
 
 /**
  * @file jump_progress_dialog.h
- * @brief QProgressDialog implementation of the jump progress port.
+ * @brief 跳转进度端口的 QProgressDialog 实现。
  */
 
 #include <QPointer>
@@ -18,29 +18,35 @@ class QProgressDialog;
 namespace lifegame::view
 {
 
-/// QProgressDialog-backed implementation of JumpProgressView.
+/// @brief 用 QProgressDialog 实现 JumpProgressView。
 class JumpProgressDialog : public JumpProgressView
 {
 public:
-    /// @param parent Widget parent.
+    /// @brief 构造进度对话框。
+    /// @param parent 父控件。
     explicit JumpProgressDialog(QWidget* parent);
+    /// @brief 关闭并销毁当前进度对话框。
     ~JumpProgressDialog() override;
 
-    /// @param info Jump parameters.
+    /// @brief 按跳转参数显示进度对话框。
+    /// @param info 跳转参数。
     void show(const shared::JumpInfo& info) override;
-    /// @param done Replayed generations.
+    /// @brief 更新进度值。
+    /// @param done 已重放的代数。
     void setProgress(int done) override;
-    /// @brief Programmatically close without treating it as user cancel.
+    /// @brief 程序化关闭，不视为用户取消。
     void close() override;
-    /// @param handler Callback invoked on user cancellation.
+    /// @brief 注册用户取消时的回调。
+    /// @param handler 用户取消时调用的回调。
     void setCancelHandler(std::function<void()> handler) override;
 
 private:
+    /// @brief 清空取消回调并关闭、延迟销毁对话框。
     void closeDialog();
 
-    QWidget* m_parent = nullptr;
-    QPointer<QProgressDialog> m_dialog;
-    std::function<void()> m_cancelHandler;
+    QWidget* m_parent = nullptr; ///< 对话框父窗口。
+    QPointer<QProgressDialog> m_dialog; ///< 当前进度对话框；为空表示未显示。
+    std::function<void()> m_cancelHandler; ///< 用户取消时调用的回调。
 };
 
 } // namespace lifegame::view

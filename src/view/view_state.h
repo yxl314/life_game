@@ -2,7 +2,7 @@
 
 /**
  * @file view_state.h
- * @brief Atomic board frame, panel state and visible range values.
+ * @brief 一次性应用的棋盘帧、面板状态与可见范围值。
  */
 
 #include <QString>
@@ -19,37 +19,37 @@ namespace lifegame::view
 {
 
 /**
- * @brief One complete board frame.
+ * @brief 一整帧棋盘状态。
  *
- * The presenter builds one frame per update and applies it atomically;
- * BoardView has no partial public setters for board/population/running.
+ * 呈现器每次更新构造一帧并一次性应用；BoardView 没有分拆的
+ * 棋盘/存活数/运行状态公开 setter。
  */
 struct BoardFrame
 {
-    const domain::Grid* board = nullptr; ///< Read-only board (owned by the model).
-    int population = 0;                  ///< Alive cells in this frame.
-    bool running = false;                ///< Simulation running state.
+    const domain::Grid* board = nullptr; ///< 只读棋盘（由模型持有）。
+    int population = 0;                  ///< 本帧的存活细胞数。
+    bool running = false;                ///< 模拟运行状态。
 };
 
-/// @brief Half-open visible cell range used by the painter.
+/// @brief 绘制器使用的可见格子范围（闭区间）。
 struct VisibleCellRange
 {
-    int firstRow = 0; ///< First visible row (inclusive).
-    int lastRow = 0;  ///< Last visible row (inclusive).
-    int firstCol = 0; ///< First visible column (inclusive).
-    int lastCol = 0;  ///< Last visible column (inclusive).
+    int firstRow = 0; ///< 第一个可见行（含）。
+    int lastRow = 0;  ///< 最后一个可见行（含）。
+    int firstCol = 0; ///< 第一个可见列（含）。
+    int lastCol = 0;  ///< 最后一个可见列（含）。
 };
 
-/// @brief One complete side-panel state.
+/// @brief 一整帧侧边面板状态。
 struct PanelState
 {
-    shared::LifeStats stats;                       ///< Generation/population/density.
-    int width = 0;                                 ///< Board width.
-    int height = 0;                                ///< Board height.
-    QString ruleNotation = QStringLiteral("B3/S23"); ///< Canonical rule.
-    domain::Boundary boundary = domain::Boundary::Dead; ///< Boundary policy.
-    int oldestGeneration = 0;                      ///< Oldest rewind generation.
-    bool running = false;                          ///< Simulation running state.
+    shared::LifeStats stats;                       ///< 代数/存活数/密度。
+    int width = 0;                                 ///< 棋盘宽度。
+    int height = 0;                                ///< 棋盘高度。
+    QString ruleNotation = QStringLiteral("B3/S23"); ///< 规范规则记法。
+    domain::Boundary boundary = domain::Boundary::Dead; ///< 边界策略。
+    int oldestGeneration = 0;                      ///< 可回退的最早代数。
+    bool running = false;                          ///< 模拟运行状态。
 };
 
 } // namespace lifegame::view

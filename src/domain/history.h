@@ -2,7 +2,7 @@
 
 /**
  * @file history.h
- * @brief Bounded bit-packed snapshot history for rewind.
+ * @brief 用于回退的有界按位打包快照历史。
  */
 
 #include <memory>
@@ -16,122 +16,131 @@ namespace lifegame::domain
 {
 
 /**
- * @brief Bounded bit-packed snapshot history used to implement rewind.
+ * @brief 用于实现回退的有界按位打包快照历史。
  *
- * Life is many-to-one, so the previous generation cannot be derived from the
- * current one. We keep one snapshot per interval (plus an anchor at the
- * origin) and replay forward from the closest snapshot not newer than the
- * requested generation.
+ * 生命游戏是多对一的，无法由当前代反推出上一代。因此每隔一个间隔保留
+ * 一份快照（外加原点锚点），回退时从“不晚于目标代”的最近快照向前重放。
  *
- * This class is pure C++ and has no Qt dependency.
+ * 纯 C++ 实现，不依赖 Qt。
  */
 class History
 {
 public:
-    /// @brief One retained generation and its packed board.
+    /// @brief 保留的一代及其打包棋盘。
     struct Snapshot
     {
-        int generation = 0; ///< Generation represented by the snapshot.
-        std::shared_ptr<const PackedGrid> packedBoard; ///< Packed board copy.
+        int generation = 0; ///< 该快照对应的代数。
+        std::shared_ptr<const PackedGrid> packedBoard; ///< 打包后的棋盘副本。
     };
 
-    static constexpr int kMaxSnapshots = 64; ///< Maximum retained interior snapshots.
+    static constexpr int kMaxSnapshots = 64; ///< 最多保留的中间快照数。
 
     /**
-     * @brief Create history with a snapshot interval.
-     * @param interval Snapshot interval in generations; must be positive.
+     * @brief 用给定快照间隔创建历史。
+     * @param interval 快照间隔（代），必须为正。
      */
     explicit History(int interval = 100);
 
     /**
-     * @brief Discard everything and start a new epoch.
-     * @param generation Epoch generation.
-     * @param board Optional anchor board.
-     * @return False when packing the anchor board failed (OOM).
+     * @brief 丢弃全部内容并开启新纪元。
+     * @param generation 纪元起点代数。
+     * @param board 可选的锚点棋盘。
+     * @return 锚点棋盘打包失败（内存不足）时返回 false。
      */
     bool reset(int generation, const std::shared_ptr<const Grid>& board);
 
     /**
-     * @brief Record a snapshot when the generation is aligned and newer.
-     * @param generation Generation represented by `board`.
-     * @param board Board to pack; ignored when null.
-     * @return False when packing failed (OOM).
+     * @brief 当代数对齐且更新时记录一份快照。
+     * @param generation `board` 对应的代数。
+     * @param board 待打包的棋盘；为空时忽略。
+     * @return 打包失败（内存不足）时返回 false。
      */
     bool record(int generation, const std::shared_ptr<const Grid>& board);
 
     /**
-     * @brief Record an already packed snapshot.
-     * @param generation Generation represented by `board`.
-     * @param board Packed board; ignored when null.
-     * @return False when the snapshot is invalid (OOM packing failed).
+     * @brief 记录一份已打包好的快照。
+     * @param generation `board` 对应的代数。
+     * @param board 已打包的棋盘；为空时忽略。
+     * @return 快照无效（内存不足导致打包失败）时返回 false。
      */
     bool recordPacked(int generation, std::shared_ptr<const PackedGrid> board);
 
     /**
-     * @brief Check whether record() would store something.
-     * @param generation Generation to test.
-     * @return True when aligned, newer, and history is initialized.
+     * @brief 判断 record() 是否会真的保存内容。
+     * @param generation 待判定的代数。
+     * @return 已初始化、代数对齐且更新时返回 true。
      */
     bool shouldRecord(int generation) const;
 
     /**
-     * @brief Remove snapshots at or after a generation.
-     * @param generation First generation to invalidate.
+     * @brief 丢弃指定代数及之后的快照。
+     * @param generation 第一个失效的代数。
      */
     void invalidateFrom(int generation);
 
-    /// @return Current snapshot interval in generations.
+    /// @brief 查询快照间隔。
+    /// @return 快照间隔（代）。
     int interval() const;
 
-    /// @return Generation at which the current epoch started.
+    /// @brief 查询当前纪元的起点。
+    /// @return 纪元起点代数。
     int epochGeneration() const;
 
     /**
-     * @brief Change the snapshot interval without resetting history.
-     * @param interval New positive interval.
+     * @brief 改变快照间隔，不重置历史。
+     * @param interval 新的正间隔。
      */
     void setInterval(int interval);
 
-    /// @return Oldest retained generation, or 0 when empty.
+    /// @brief 查询仍保留的最早一代。
+    /// @return 最早保留的代数；历史为空时返回 0。
     int oldestGeneration() const;
 
     /**
-     * @brief Find the closest snapshot not newer than a generation.
-     * @param generation Requested generation.
-     * @return Snapshot copy, or std::nullopt when none exists.
+     * @brief 找出不晚于给定代的最近快照。
+     * @param generation 请求的代数。
+     * @return 快照副本；没有可用快照时返回 std::nullopt。
      */
     std::optional<Snapshot> snapshotAtOrBefore(int generation) const;
 
-    /// @return Number of retained snapshots (including the anchor).
+    /// @brief 统计保留的快照数。
+    /// @return 保留的快照数（含锚点）。
     std::size_t size() const noexcept
     {
         return m_snapshots.size();
     }
 
-    /// Generation of a retained snapshot; returns -1 for an invalid index.
     /**
-     * @brief Generation of a retained snapshot.
-     * @param index Snapshot index.
-     * @return Generation, or -1 for an invalid index.
+     * @brief 某个保留快照的代数。
+     * @param index 快照下标。
+     * @return 代数；下标无效时返回 -1。
      */
     int generationAt(std::size_t index) const noexcept
     {
         return index < m_snapshots.size() ? m_snapshots[index].generation : -1;
     }
 
-    /// @return True when no snapshot is retained.
+    /// @brief 判断历史里是否没有任何快照。
+    /// @return 没有保留快照时返回 true。
     bool empty() const
     {
         return m_snapshots.empty();
     }
 
 private:
+    /// @brief 判断代数是否与纪元、间隔对齐。
+    /// @param generation 待判定的代数。
+    /// @return 该代应当有快照时返回 true。
     bool aligned(int generation) const;
+
+    /// @brief 丢弃超出保留上限的最早中间快照。
+    ///
+    /// 下标 0 的锚点始终保留。
     void trim();
 
-    int m_interval = 100;
-    int m_epoch = 0;
-    std::vector<Snapshot> m_snapshots;
+    int m_interval = 100;              ///< 快照间隔（代），恒为正。
+    int m_epoch = 0;                   ///< 当前纪元的起点代数。
+    std::vector<Snapshot> m_snapshots; ///< 保留的快照，最早在前；下标 0 为锚点。
 };
 
 } // namespace lifegame::domain

@@ -25,18 +25,34 @@ struct SettingsLoadResult
     QString detail;                           ///< Optional file/detail text.
 };
 
-/// QSettings-backed persistence. No UI, no model state machine.
+/// @brief QSettings-backed persistence. No UI, no model state machine.
+///
+/// Key names are private to this class; callers only see SessionState. Every
+/// scalar is range-checked while loading, so a hand-edited file degrades to
+/// defaults plus SettingsError::CorruptData instead of failing the restore.
 class SettingsStore
 {
 public:
+    /// @brief Take ownership of the QSettings instance used for all I/O.
+    ///
     /// @param settings Owning QSettings instance (may be null only in tests).
     explicit SettingsStore(std::unique_ptr<QSettings> settings);
+    /// @brief Destroy the owned QSettings instance.
     ~SettingsStore();
 
+    /// @brief The store owns its QSettings instance, so copying is disabled.
     SettingsStore(const SettingsStore&) = delete;
+    /// @brief The store owns its QSettings instance, so assignment is disabled.
     SettingsStore& operator=(const SettingsStore&) = delete;
 
-    /// @return Loaded state, defaults, and a typed error if applicable.
+    /**
+     * @brief Read and validate the stored session state.
+     *
+     * @return Loaded state, defaults, and a typed error if applicable.
+     * @retval AccessError The store has no QSettings instance or the file is unreadable.
+     * @retval FormatError QSettings rejected the file format.
+     * @retval CorruptData A stored value was unusable and was replaced by a default.
+     */
     SettingsLoadResult load() const;
 
     /**
@@ -48,7 +64,7 @@ public:
     SettingsError save(const SessionState& state, QString* detail = nullptr);
 
 private:
-    std::unique_ptr<QSettings> m_settings;
+    std::unique_ptr<QSettings> m_settings; ///< QSettings instance; null disables I/O.
 };
 
 } // namespace lifegame::service

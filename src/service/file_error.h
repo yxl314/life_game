@@ -8,7 +8,7 @@
 namespace lifegame::service
 {
 
-/// Recoverable infrastructure failures. The UI turns these into one message.
+/// @brief Recoverable infrastructure failures. The UI turns these into one message.
 enum class FileError
 {
     None = 0,      ///< Success.
@@ -21,6 +21,10 @@ enum class FileError
     TooLarge       ///< File exceeds the configured size cap.
 };
 
+/// @brief Stable spelling of an error code for logs.
+///
+/// @param error Error code.
+/// @return Static name; "Unknown" for a value outside the enumeration.
 constexpr const char* fileErrorName(FileError error) noexcept
 {
     switch (error)

@@ -2,7 +2,7 @@
 
 /**
  * @file packed_grid.h
- * @brief One-bit-per-cell immutable board snapshot.
+ * @brief 每格一比特的只读棋盘快照。
  */
 
 #include <cstddef>
@@ -15,76 +15,93 @@ namespace lifegame::domain
 class Grid;
 
 /**
- * @brief One-bit-per-cell immutable snapshot of a board.
+ * @brief 每格一比特的只读棋盘快照。
  *
- * Only history snapshots use this form: the live board and the simulation
- * pipeline stay byte-per-cell for cache-friendly neighbour reads. Packing is
- * done once per snapshot; unpacking happens only when a rewind starts.
+ * 只有历史快照使用这种形式：活动棋盘与演化流程保持每格一字节，以便邻居
+ * 读取命中缓存。打包每份快照只做一次，解包只在回退开始时发生。
  *
- * Storage is allocated with `new (std::nothrow)` so snapshot failures can be
- * reported as `OutOfMemory` instead of terminating the process.
+ * 存储用 `new (std::nothrow)` 分配，快照失败可以按 `OutOfMemory` 上报，
+ * 而不是终止进程。
  */
 class PackedGrid
 {
 public:
-    /// @brief Construct an empty, valid snapshot.
+    /// @brief 构造一个空的、有效的快照。
     PackedGrid() = default;
+    /// @brief 深拷贝打包字；源快照无效时副本也无效。
+    /// @param other 待拷贝的快照。
     PackedGrid(const PackedGrid& other);
+    /// @brief 深拷贝打包字；自赋值保留原有存储。
+    /// @param other 待拷贝的快照。
+    /// @return 本快照。
     PackedGrid& operator=(const PackedGrid& other);
+    /// @brief 接管 `other` 的打包字。
+    /// @param other 待移动的快照。
     PackedGrid(PackedGrid&&) noexcept = default;
+    /// @brief 接管 `other` 的打包字。
+    /// @param other 待移动的快照。
+    /// @return 本快照。
     PackedGrid& operator=(PackedGrid&&) noexcept = default;
 
     /**
-     * @brief Pack a live board.
-     * @param board Board to copy into packed form.
+     * @brief 打包一块活动棋盘。
+     * @param board 待复制成打包形式的棋盘。
      */
     explicit PackedGrid(const Grid& board);
 
-    /// @return Unpacked live board; empty when the snapshot is invalid.
+    /// @brief 把快照解包成活动棋盘。
+    /// @return 解包后的棋盘；快照无效时为空棋盘。
     Grid unpack() const;
 
-    /// @return Board width in cells.
+    /// @brief 查询棋盘宽度。
+    /// @return 宽度（格）。
     int width() const noexcept
     {
         return m_width;
     }
 
-    /// @return Board height in cells.
+    /// @brief 查询棋盘高度。
+    /// @return 高度（格）。
     int height() const noexcept
     {
         return m_height;
     }
 
-    /// @return Number of represented bits (width * height).
+    /// @brief 查询表示的比特数。
+    /// @return 比特数（width * height）。
     std::size_t bitSize() const noexcept
     {
         return static_cast<std::size_t>(m_width) * static_cast<std::size_t>(m_height);
     }
 
-    /// @return Bytes used by the packed word storage.
+    /// @brief 查询打包存储的大小。
+    /// @return 打包字占用的字节数。
     std::size_t byteSize() const noexcept
     {
-        return m_wordCount * sizeof(std::uint64_t);
+        return m_wordCount *
+               sizeof(std::uint64_t);
     }
 
-    /// @return True when no packed words are stored.
+    /// @brief 判断是否没有存储任何内容。
+    /// @return 没有任何打包字时返回 true。
     bool empty() const noexcept
     {
         return m_wordCount == 0;
     }
 
-    /// @return True when storage allocation and packing succeeded.
+    /// @brief 判断快照是否可用。
+    /// @return 存储分配与打包都成功时返回 true。
     bool valid() const noexcept
     {
         return m_valid;
     }
 
 private:
-    int m_width = 0;
-    int m_height = 0;
-    std::size_t m_wordCount = 0;
-    std::unique_ptr<std::uint64_t[]> m_words;
-    bool m_valid = true;
+    int m_width = 0;                          ///< 棋盘宽度（格）。
+    int m_height = 0;                         ///< 棋盘高度（格）。
+    std::size_t m_wordCount = 0;              ///< 64 位字数；为空或失败时为 0。
+    std::unique_ptr<std::uint64_t[]> m_words; ///< 打包字；为空或失败时为空指针。
+    bool m_valid = true;                      ///< 分配或打包失败时为 false。
 };
 
 } // namespace lifegame::domain

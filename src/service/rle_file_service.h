@@ -24,15 +24,19 @@ struct RleReadResult
     QString detail;                                  ///< Optional system detail.
 };
 
-/// Output port used by FileController and replaceable in tests.
 /// @brief Replaceable RLE file I/O port.
 class RleFilePort
 {
 public:
+    /// @brief Allow deletion through the port interface.
     virtual ~RleFilePort() = default;
 
-    /// @param path File path.
-    /// @return Decoded document or a typed file/decode error.
+    /**
+     * @brief Read a file and decode it as RLE.
+     *
+     * @param path File path.
+     * @return Decoded document or a typed file/decode error.
+     */
     virtual RleReadResult read(const QString& path) const = 0;
 
     /**
@@ -49,7 +53,31 @@ public:
 class RleFileService : public RleFilePort
 {
 public:
+    /**
+     * @brief Read at most 8 MiB, then decode the bytes as RLE.
+     *
+     * The size cap is enforced while reading rather than from file.size(),
+     * which is -1 for pipes and other special files.
+     *
+     * @param path File path.
+     * @return Decoded document or a typed file/decode error.
+     * @retval OpenFailed The file cannot be opened for reading.
+     * @retval TooLarge The file exceeds 8 MiB.
+     * @retval ReadFailed The read itself failed.
+     * @retval DecodeFailed The bytes are not a valid RLE document.
+     */
     RleReadResult read(const QString& path) const override;
+
+    /**
+     * @brief Write UTF-8 text through QSaveFile, so a failed write keeps the old file.
+     *
+     * @param path Destination path.
+     * @param text RLE text.
+     * @param detail Optional system error detail.
+     * @return FileError code.
+     * @retval OpenFailed The temporary file cannot be created.
+     * @retval WriteFailed Writing or committing the temporary file failed.
+     */
     FileError write(const QString& path, const QString& text, QString* detail = nullptr) const override;
 };
 

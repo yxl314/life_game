@@ -51,6 +51,10 @@ QT_FORBIDDEN = {
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]')
 QT_INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]Q[A-Za-z0-9_/]*[>"]')
 CJK_RE = re.compile(r'[\u4e00-\u9fff]')
+
+# 只关心字符串字面量里的中文——那才是会显示给用户、需要翻译成 i18n 的文本。
+# 注释里的中文是文档，不是显示文本；把它也算违规会让整个仓库的头文件全红。
+STRING_LITERAL_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'')
 MANIFEST_GROUP_RE = re.compile(
     r'^(LIFEGAME_(?:DOMAIN|SHARED|MODEL|SERVICE|VIEW|CONTROLLER|APP|MAIN))'
     r'_(?:SOURCES|HEADERS)\s*=\s*(.*)$')
@@ -192,8 +196,13 @@ def main() -> int:
         sources.append(path)
         text = path.read_text(encoding="utf-8", errors="replace")
 
-        if layer in {"domain", "shared", "model"} and CJK_RE.search(text):
-            problems.append(f"{path}: Chinese display text is forbidden in {layer}/")
+        if layer in {"domain", "shared", "model"}:
+            for literal in STRING_LITERAL_RE.finditer(text):
+                if CJK_RE.search(literal.group(0)):
+                    problems.append(
+                        f"{path}: Chinese display text is forbidden in {layer}/: "
+                        f"{literal.group(0)[:40]}")
+                    break
 
         for lineno, line in enumerate(text.splitlines(), 1):
             if layer in {"domain", "shared"} and QT_INCLUDE_RE.match(line):

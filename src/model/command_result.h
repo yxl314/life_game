@@ -2,7 +2,7 @@
 
 /**
  * @file command_result.h
- * @brief Typed model-command results.
+ * @brief 模型命令的类型化结果。
  */
 
 #include <QMetaType>
@@ -11,48 +11,51 @@ namespace lifegame::model
 {
 
 /**
- * @brief Result of a model command.
+ * @brief 模型命令的结果。
  *
- * Application code never throws for expected failures; controllers switch on
- * this code and translate it into one actionable user message.
+ * 预期内的失败不会抛异常；控制器根据该结果码
+ * 翻译成一条可操作的提示。
  */
 enum class CommandResult
 {
-    Success = 0,       ///< Command completed exactly as requested.
-    Busy,              ///< Model is repainting/jumping and rejected the command.
-    OutOfBounds,       ///< Coordinate or index outside the board.
-    NoChange,          ///< Command was valid but state was already identical.
-    InvalidRule,       ///< Rule notation/mask is invalid.
-    InvalidPattern,    ///< Pattern is empty or structurally inconsistent.
-    InvalidArgument,   ///< Null/invalid API argument.
-    InvalidTarget,     ///< Jump target is negative or equals current generation.
-    NoHistory,         ///< Rewind has no snapshot at/before the target.
-    EmptyBoard,        ///< Simulation cannot start on an empty board.
-    NotRunning,        ///< Step requested while simulation is paused.
-    Clipped,           ///< Pattern was placed but clipped by the board edge.
-    Adjusted,          ///< Requested size was clamped to a supported range.
-    TooLarge,          ///< Document/pattern exceeds board limits.
-    OutOfMemory,       ///< Required allocation failed.
-    ComputationFailed  ///< Background step/jump computation failed.
+    Success = 0,       ///< 命令按请求完成。
+    Busy,              ///< 模型正在异步计算或跳转，拒绝该命令。
+    OutOfBounds,       ///< 坐标或下标超出棋盘。
+    NoChange,          ///< 命令合法，但状态本来就是这样。
+    InvalidRule,       ///< 规则记法或掩码非法。
+    InvalidPattern,    ///< 图案为空或结构不一致。
+    InvalidArgument,   ///< 空的或非法的 API 参数。
+    InvalidTarget,     ///< 跳转目标为负数或等于当前代。
+    NoHistory,         ///< 回退目标及其更早的代数没有可用快照。
+    EmptyBoard,        ///< 空棋盘无法开始模拟。
+    NotRunning,        ///< 暂停状态下请求单步。
+    Clipped,           ///< 图案已放置，但被棋盘边缘裁剪。
+    Adjusted,          ///< 请求的尺寸被夹取到支持范围。
+    TooLarge,          ///< 文档或图案超过棋盘上限。
+    OutOfMemory,       ///< 所需内存分配失败。
+    ComputationFailed  ///< 后台单步或跳转计算失败。
 };
 
-/// @param result Command result.
-/// @return True for Success, Clipped and Adjusted (the command took effect).
+/// @brief 判断命令是否真的生效。
+/// @param result 命令结果。
+/// @return 对 Success、Clipped 和 Adjusted 返回 true。
 constexpr bool succeeded(CommandResult result) noexcept
 {
     return result == CommandResult::Success || result == CommandResult::Clipped ||
            result == CommandResult::Adjusted;
 }
 
-/// @param result Command result.
-/// @return True when the command did not take effect.
+/// @brief 判断命令是否未生效。
+/// @param result 命令结果。
+/// @return succeeded(result) 为 false 时返回 true。
 constexpr bool failed(CommandResult result) noexcept
 {
     return !succeeded(result);
 }
 
-/// @param result Command result.
-/// @return Stable ASCII name for logs/tests (never shown to users).
+/// @brief 返回用于日志和测试的稳定 ASCII 名称。
+/// @param result 命令结果。
+/// @return 名称字符串；不展示给用户。
 constexpr const char* commandResultName(CommandResult result) noexcept
 {
     switch (result)

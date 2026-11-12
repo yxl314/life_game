@@ -25,6 +25,10 @@ enum class RuleParseError
     InvalidCharacter   ///< Character outside '0'..'8' or bad prefix.
 };
 
+/// @brief Stable spelling of a parse error for logs.
+///
+/// @param error Parse error.
+/// @return Static name; "Unknown" for a value outside the enumeration.
 constexpr const char* ruleParseErrorName(RuleParseError error) noexcept
 {
     switch (error)
@@ -64,6 +68,8 @@ public:
     {
     }
 
+    /// @brief Query the birth mask.
+    ///
     /// @param neighbours Neighbour count.
     /// @return True when a dead cell is born with this count.
     constexpr bool births(int neighbours) const noexcept
@@ -71,6 +77,8 @@ public:
         return neighbours >= 0 && neighbours <= 8 && (m_birth & (1u << neighbours)) != 0;
     }
 
+    /// @brief Query the survival mask.
+    ///
     /// @param neighbours Neighbour count.
     /// @return True when an alive cell survives with this count.
     constexpr bool survives(int neighbours) const noexcept
@@ -78,18 +86,24 @@ public:
         return neighbours >= 0 && neighbours <= 8 && (m_survival & (1u << neighbours)) != 0;
     }
 
+    /// @brief Raw birth mask.
+    ///
     /// @return Birth mask (bits 0..8).
     constexpr std::uint16_t birthMask() const noexcept
     {
         return m_birth;
     }
 
+    /// @brief Raw survival mask.
+    ///
     /// @return Survival mask (bits 0..8).
     constexpr std::uint16_t survivalMask() const noexcept
     {
         return m_survival;
     }
 
+    /// @brief Render the canonical notation.
+    ///
     /// @return Canonical notation, e.g. "B3/S23".
     std::string notation() const;
 
@@ -104,19 +118,29 @@ public:
      */
     static RuleParseResult parse(std::string_view text);
 
+    /// @brief Compare the two masks.
+    ///
+    /// @param lhs Left operand.
+    /// @param rhs Right operand.
+    /// @return True when both masks are equal.
     friend constexpr bool operator==(const Rule& lhs, const Rule& rhs) noexcept
     {
         return lhs.m_birth == rhs.m_birth && lhs.m_survival == rhs.m_survival;
     }
 
+    /// @brief Compare the two masks.
+    ///
+    /// @param lhs Left operand.
+    /// @param rhs Right operand.
+    /// @return True when either mask differs.
     friend constexpr bool operator!=(const Rule& lhs, const Rule& rhs) noexcept
     {
         return !(lhs == rhs);
     }
 
 private:
-    std::uint16_t m_birth = static_cast<std::uint16_t>(1u << 3);
-    std::uint16_t m_survival = static_cast<std::uint16_t>((1u << 2) | (1u << 3));
+    std::uint16_t m_birth = static_cast<std::uint16_t>(1u << 3); ///< Birth mask; bit n = born at n.
+    std::uint16_t m_survival = static_cast<std::uint16_t>((1u << 2) | (1u << 3)); ///< Survival mask.
 };
 
 /// @brief Result of Rule::parse().
@@ -133,13 +157,19 @@ struct RulePreset
     Rule rule;           ///< Rule value.
 };
 
+/// @brief Built-in rules in menu order.
+///
 /// @return Built-in rules in menu order.
 const std::vector<RulePreset>& builtinRulePresets();
 
+/// @brief Find a built-in rule by its stable ID.
+///
 /// @param id Stable preset ID.
 /// @return Matching preset, or nullptr.
 const RulePreset* findRulePreset(std::string_view id);
 
+/// @brief Find a built-in rule by its canonical notation.
+///
 /// @param notation Canonical B/S notation.
 /// @return Matching preset, or nullptr.
 const RulePreset* findRulePresetByNotation(std::string_view notation);

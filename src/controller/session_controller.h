@@ -2,7 +2,7 @@
 
 /**
  * @file session_controller.h
- * @brief Session restore/save and settings lifecycle coordinator.
+ * @brief 会话恢复/保存与设置生命周期的协调者。
  */
 
 #include <QObject>
@@ -35,48 +35,62 @@ namespace lifegame::controller
 class SessionService;
 class SessionSettingsPort;
 
-/// @brief Application/session coordinator: restore on start, persist on exit.
+/**
+ * @brief 应用/会话协调者：启动时恢复，退出时持久化。
+ *
+ * 持有本次运行归一化后的设置快照，并通过状态栏端口报告恢复/保存问题。
+ * 文件读写由 SessionService 负责；具体控制器只经 SessionSettingsPort 访问。
+ */
 class SessionController : public QObject
 {
     Q_OBJECT
 
 public:
-    /// @param model Model to restore/save.
-    /// @param settingsPort Narrow adapter to controller-owned input settings.
-    /// @param store Persistence store.
-    /// @param window Window geometry source.
-    /// @param messages Status output port.
-    /// @param parent QObject parent.
+    /// @brief 绑定模型、设置端口与持久化存储。
+    /// @param model 需要恢复/保存的模型。
+    /// @param settingsPort 指向控制器侧输入设置的窄适配器。
+    /// @param store 持久化存储。
+    /// @param window 窗口几何来源。
+    /// @param messages 状态栏输出端口。
+    /// @param parent QObject 父对象。
     SessionController(model::LifeModel* model,
                       SessionSettingsPort* settingsPort,
                       service::SettingsStore* store,
                       QMainWindow* window,
                       view::MessageSink* messages,
                       QObject* parent = nullptr);
+    /// @brief 释放持久化服务；析构本身不写盘。
     ~SessionController() override;
 
-    /// @return True when a persisted board was restored; falls back to default board.
+    /// @brief 读取已保存的会话，并应用到模型与外壳。
+    ///
+    /// 棋盘缺失、无法解析或被模型拒绝时回退到默认棋盘尺寸；每种结果都会
+    /// 经状态栏端口报出。
+    /// @return 恢复了持久化棋盘时返回 true。
     bool restore();
 
-    /// @return Save result code.
+    /// @brief 采集当前状态并写入存储。
+    /// @return 保存结果码。
     service::SettingsError save();
 
-    /// @return Last applied/normalized settings.
+    /// @brief 最近一次应用/归一化的设置。
+    /// @return 设置快照。
     const shared::AppSettings& settings() const;
 
-    /// @brief Capture current controller-owned input state into settings().
+    /// @brief 把控制器侧当前的输入状态采集进 settings()。
     void refreshSettings();
 
-    /// @param values Settings to normalize and apply.
+    /// @brief 归一化并应用设置到模型与控制器。
+    /// @param values 待归一化并应用的设置。
     void applySettings(const shared::AppSettings& values);
 
 private:
-    model::LifeModel* m_model = nullptr;
-    SessionSettingsPort* m_settingsPort = nullptr;
-    std::unique_ptr<SessionService> m_service;
-    QMainWindow* m_window = nullptr;
-    view::MessageSink* m_messages = nullptr;
-    shared::AppSettings m_settings;
+    model::LifeModel* m_model = nullptr;           ///< 需要恢复/保存的模型。
+    SessionSettingsPort* m_settingsPort = nullptr; ///< 控制器设置适配器，可为空。
+    std::unique_ptr<SessionService> m_service;     ///< 与 UI 无关的持久化服务。
+    QMainWindow* m_window = nullptr;               ///< 窗口几何来源，可为空。
+    view::MessageSink* m_messages = nullptr;       ///< 状态栏输出端口。
+    shared::AppSettings m_settings;                ///< 本次会话归一化后的设置。
 };
 
 } // namespace lifegame::controller
