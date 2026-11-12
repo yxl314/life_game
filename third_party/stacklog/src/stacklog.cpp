@@ -60,7 +60,7 @@ struct logger_state
 /// 进程常驻状态；不析构，避免静态析构顺序问题。
 logger_state& state()
 {
-    static logger_state* instance = new logger_state;
+    static auto* instance = new logger_state;
     return *instance;
 }
 
@@ -113,9 +113,9 @@ std::string escape_field(const std::string& value)
 {
     std::string result;
     result.reserve(value.size());
-    for (std::string::const_iterator it = value.begin(); it != value.end(); ++it)
+    for (char ch : value)
     {
-        switch (*it)
+        switch (ch)
         {
         case '\\':
             result += "\\\\";
@@ -130,7 +130,7 @@ std::string escape_field(const std::string& value)
             result += "\\n";
             break;
         default:
-            result += *it;
+            result += ch;
             break;
         }
     }
@@ -194,7 +194,7 @@ std::string timestamp()
     (void)std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_value);
     char result[40];
     (void)std::snprintf(result, sizeof(result), "%s.%03lld", buffer, milliseconds);
-    return std::string(result);
+    return {result};
 }
 
 std::string join_path(const std::string& dir, const std::string& name)
@@ -560,7 +560,7 @@ void detail::log_line::write_line(level severity, const char* file, int line, co
 
         if (logger.ready)
         {
-            const std::uint64_t required = static_cast<std::uint64_t>(text.size() + 1);
+            const auto required = static_cast<std::uint64_t>(text.size() + 1);
             const std::uint64_t next_size = logger.written_bytes + required;
             const bool over_limit = next_size > logger.options.max_file_size;
             const bool retry_ready = logger.rotation_retry_size == 0 || next_size > logger.rotation_retry_size;
