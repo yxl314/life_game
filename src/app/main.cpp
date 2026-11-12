@@ -97,14 +97,14 @@ int main(int argc, char* argv[])
             STACKLOG_WARN() << "file logging is unavailable; using stderr only";
         }
 
-        // 单实例锁只负责互斥；重复启动直接退出，不尝试把已有窗口带到前台。
+        // 本应用暂未接入门铃；重复启动直接退出，不尝试把已有窗口带到前台。
         const singleproc::Guard guard("life-game");
         if (guard.state() == singleproc::Guard::State::Error)
         {
-            STACKLOG_ERROR() << "single-instance lock failed errno=" << guard.errorCode();
+            STACKLOG_ERROR() << "single-instance lock failed errno=" << guard.error_code();
             exitCode = 1;
         }
-        else if (!guard.isPrimary())
+        else if (!guard.is_primary())
         {
             STACKLOG_INFO() << "another instance is already running";
             exitCode = 0;
