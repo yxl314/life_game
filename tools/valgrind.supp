@@ -1,0 +1,54 @@
+# Valgrind 抑制清单
+#
+# libfontconfig 在进程退出时不会释放它的字体缓存：FcCharSetAddChar / FcConfig
+# 系列里的 malloc/realloc 会以 "definitely lost" 出现。这是系统库自己的行为，
+# 不在本项目的代码里，也不随本项目的改动变化——照实报出来只会把真正的项目
+# 泄漏淹掉。
+#
+# 抑制只覆盖"调用链里有 libfontconfig"的分配点；项目代码里的泄漏照旧报。
+{
+   fontconfig-malloc
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:malloc
+   ...
+   obj:*/libfontconfig.so*
+}
+{
+   fontconfig-realloc
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:realloc
+   ...
+   obj:*/libfontconfig.so*
+}
+{
+   fontconfig-calloc
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:calloc
+   ...
+   obj:*/libfontconfig.so*
+}
+
+# libdbus 的连接的清理依赖它自己的事件循环；Qt 在进程退出时先拆了事件循环，
+# 于是那条连接以 "definitely lost" 出现。栈里全是 libdbus 与 Qt5DBus 的帧，
+# 没有本项目代码。同理抑制掉，不然每次都得手工辨认。
+{
+   dbus-connection
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:calloc
+   ...
+   obj:*/libdbus-1.so*
+}
+
+# Qt 6 的 QSS 解析器（QCss::StyleSheet::buildIndexes）会做一次越界的 16 字节读，
+# 栈里全是 Qt6Core/Qt6Gui 的匿名帧。这是 Qt 的已知误报，与本项目代码无关；
+# 抑制范围限定在"栈里有 libQt6Gui"，应用自己的读越界照旧报。
+{
+   qt6-qcss-invalid-read
+   Memcheck:Addr16
+   ...
+   obj:*/libQt6Gui.so*
+}

@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <QStandardPaths>
 #include <QString>
+#include <QTimer>
+#include <QWidget>
 
 #include <singleproc/singleproc.hpp>
 #include <stacklog/stacklog.hpp>
@@ -60,6 +62,23 @@ LogSetup setupLogging(bool verbose, const QString& requestedPath)
 }
 
 } // namespace
+
+// 审计用：GUI 程序没有命令行退出路径，无头环境里只能被杀掉——那样拿不到
+// 正常退出流程产生的泄漏汇总。用定时器让窗口自己关，Qt 走完整的 close →
+// quit → 析构链路。只在显式设置了 CXX_GUI_AUTOCLOSE_MS 时生效，正常启动
+// 不受任何影响。
+static void installAutoClose(QWidget* window)
+{
+    const QByteArray raw = qgetenv("CXX_GUI_AUTOCLOSE_MS");
+    bool ok = false;
+    const int milliseconds = raw.toInt(&ok);
+    if (!ok || milliseconds <= 0)
+    {
+        return;
+    }
+    QTimer::singleShot(milliseconds, window, [window]() { window->close(); });
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -116,6 +135,7 @@ int main(int argc, char* argv[])
             {
                 lifegame::app::MainWindow window;
                 window.show();
+            installAutoClose(&window);
                 exitCode = application.exec();
             }
             STACKLOG_INFO() << "event loop exited code=" << exitCode;

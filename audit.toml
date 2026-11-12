@@ -78,30 +78,34 @@ tool = "memcheck"
 checks = ["leaks"]
 # libLLVM 在插件/JIT 初始化时会偶发 "possibly lost"；只让 definite/indirect
 # 泄漏计入 ERROR SUMMARY，完整 loss record 仍保留在报告里。
+# --suppressions：libfontconfig 退出时不释放字体缓存、libdbus 的连接在 Qt 拆
+# 事件循环后没有收尾，两者都会以 "definitely lost" 出现；那是系统侧的行为，
+# 照实报只会淹掉真正的泄漏。
+# --errors-for-leak-kinds=definite：只按根块计错，间接块挂在根上，不重复计数。
 extra_args = ["--undef-value-errors=no",
-              "--errors-for-leak-kinds=definite,indirect"]
+              "--errors-for-leak-kinds=definite",
+              "--suppressions=tools/valgrind.supp"]
 report = "reports/valgrind.txt"
 timeout_sec = 600
 
-# GUI 程序没有命令行退出路径：在 :101 上启动 Xvfb + openbox，再用 wmctrl
-# 关闭窗口，让 Qt 走正常退出流程（保存会话、执行 atexit），这样才能拿到
-# LeakSanitizer / Valgrind 的泄漏汇总。窗口管理器和 wmctrl 缺一不可：
+# GUI 程序没有命令行退出路径：在 :101 上启动 Xvfb + openbox，窗口由应用自己的定时器关闭
+# （CXX_GUI_AUTOCLOSE_MS），让 Qt 走正常退出流程（保存会话、执行 atexit），这样才能拿到
+# LeakSanitizer / Valgrind 的泄漏汇总。用定时器比外部关窗更可靠：
 # 没有 WM 时 WM_DELETE_WINDOW 不会送达应用。
 [run]
 args = []
-env = { DISPLAY = ":101", QT_QPA_PLATFORM = "xcb" }
+env = { DISPLAY = ":101", QT_QPA_PLATFORM = "xcb", CXX_GUI_AUTOCLOSE_MS = "8000" }
 timeout_sec = 120
 warmup_sec = 3
 pre = [
+    "pkill -f '[b]uild/debug/bin/lifegame' 2>/dev/null || true",
     "pkill -f '[X]vfb :101' 2>/dev/null || true",
     "Xvfb :101 -screen 0 1280x1024x24 >/tmp/lifegame-audit-xvfb.log 2>&1 &",
     "sleep 1",
     "openbox >/tmp/lifegame-audit-openbox.log 2>&1 &",
     "sleep 1",
 ]
-stop = [
-    "i=0; while [ $i -lt 90 ]; do wid=$(xdotool search --name '生命游戏' 2>/dev/null | head -1); if [ -n \"$wid\" ]; then sleep 2; wmctrl -i -c \"$wid\"; exit 0; fi; sleep 1; i=$((i+1)); done; exit 1",
-]
+stop = []
 post = [
     "pkill -f '[X]vfb :101' 2>/dev/null || true",
 ]
