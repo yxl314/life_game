@@ -18,9 +18,9 @@
 namespace
 {
 
-constexpr std::size_t max_path_length = 4096;
-constexpr int doorbell_connect_timeout_ms = 100;
-constexpr int doorbell_backlog = 16;
+constexpr std::size_t max_path_length = 4096; // Linux PATH_MAX 上限
+constexpr int doorbell_connect_timeout_ms = 100; // 本地 socket 的短连接上限
+constexpr int doorbell_backlog = 16; // 通知会合并，不需要很大的队列
 
 /// 返回默认锁目录：优先 XDG_RUNTIME_DIR，其次 /tmp。
 std::string default_runtime_dir()
@@ -103,22 +103,24 @@ bool make_unix_address(const std::string& path, sockaddr_un& address)
     return true;
 }
 
-void set_close_on_exec(int fd)
+bool set_close_on_exec(int fd)
 {
     const int flags = ::fcntl(fd, F_GETFD);
-    if (flags >= 0)
+    if (flags < 0)
     {
-        (void)::fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+        return false;
     }
+    return ::fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == 0;
 }
 
-void set_nonblocking(int fd)
+bool set_nonblocking(int fd)
 {
     const int flags = ::fcntl(fd, F_GETFL);
-    if (flags >= 0)
+    if (flags < 0)
     {
-        (void)::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+        return false;
     }
+    return ::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
 }
 
 /// 二次实例：尝试一次短连接，把固定的单字节通知送给主实例。
@@ -135,8 +137,11 @@ void notify_doorbell(const std::string& socket_path)
     {
         return;
     }
-    set_close_on_exec(fd);
-    set_nonblocking(fd);
+    if (!set_close_on_exec(fd) || !set_nonblocking(fd))
+    {
+        ::close(fd);
+        return;
+    }
 
     const int result = ::connect(fd, reinterpret_cast<const sockaddr*>(&address), sizeof(address));
     if (result != 0 && errno != EINPROGRESS)
@@ -165,6 +170,8 @@ void notify_doorbell(const std::string& socket_path)
         }
     }
 
+    // 连接本身已经表示“二次启动发生了”；标记字节只用于完成一次发送，
+    // 主实例不读取它。失败时静默忽略，通知是 best-effort。
     const char marker = 1;
     int send_flags = 0;
 #ifdef MSG_NOSIGNAL
@@ -189,8 +196,11 @@ int start_doorbell(const std::string& socket_path)
     {
         return -1;
     }
-    set_close_on_exec(fd);
-    set_nonblocking(fd);
+    if (!set_close_on_exec(fd) || !set_nonblocking(fd))
+    {
+        ::close(fd);
+        return -1;
+    }
 
     // 已经持有文件锁，同名 socket 只可能是上次异常终止留下的残留。
     if (::unlink(socket_path.c_str()) != 0 && errno != ENOENT)
@@ -237,7 +247,7 @@ Guard::Guard(const std::string& key, const std::string& runtime_dir)
     }
 
     const std::string lock_path = make_lock_path(runtime_dir, key);
-    if (lock_path.empty() || lock_path.size() >= max_path_length)
+    if (lock_path.size() >= max_path_length)
     {
         error_code_ = ENAMETOOLONG;
         return;
@@ -263,6 +273,15 @@ Guard::Guard(const std::string& key, const std::string& runtime_dir)
     if (fd < 0)
     {
         error_code_ = errno;
+        return;
+    }
+
+    // O_CLOEXEC 在部分平台可能缺失；fcntl 作为统一兜底。
+    if (!set_close_on_exec(fd))
+    {
+        const int error = errno;
+        ::close(fd);
+        error_code_ = error;
         return;
     }
 
@@ -376,7 +395,12 @@ bool Guard::process_doorbell(int timeout_ms)
         descriptor.fd = doorbell_fd_;
         descriptor.events = POLLIN;
         descriptor.revents = 0;
-        if (::poll(&descriptor, 1, timeout_ms) <= 0)
+        int result = 0;
+        do
+        {
+            result = ::poll(&descriptor, 1, timeout_ms);
+        } while (result < 0 && errno == EINTR);
+        if (result <= 0)
         {
             return false;
         }
@@ -393,7 +417,7 @@ bool Guard::process_doorbell(int timeout_ms)
             }
             break;
         }
-        set_close_on_exec(client);
+        // 连接本身即为通知；没有 payload，接受后立即关闭。
         ::close(client);
         doorbell_pending_ = true;
     }

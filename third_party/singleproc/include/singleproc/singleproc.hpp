@@ -52,13 +52,18 @@ public:
     /// 关闭门铃监听、删除 socket 文件并释放独占锁。
     ~Guard();
 
+    // 解锁和 socket 生命周期都绑定在对象上，拷贝/移动会让所有权含糊。
     Guard(const Guard&) = delete;
     Guard& operator=(const Guard&) = delete;
+    Guard(Guard&&) = delete;
+    Guard& operator=(Guard&&) = delete;
 
     /// 返回本次启动的结果。
     State state() const noexcept;
 
     /// 当前进程是否取得独占权。
+    ///
+    /// Error 也返回 false；需要区分“已有实例”和“锁失败”时请查 state()。
     bool is_primary() const noexcept;
 
     /// 返回 Error 时的 errno；正常或 AlreadyRunning 时为 0。
@@ -66,20 +71,23 @@ public:
 
     /// 注册二次启动通知的回调；替换旧回调。
     ///
-    /// 回调为空时保留待处理通知，等待下一次设置后再分发。
+    /// 回调为空时保留待处理通知，等待之后的 process_doorbell() 再分发。
     void set_doorbell_handler(DoorbellHandler handler);
 
     /// 处理待处理的二次启动通知。
     ///
     /// timeout_ms 为 0 时非阻塞；小于 0 时等待到有通知为止。
+    /// 门铃不可用或未设置 handler 时立即返回 false。
     /// 返回 true 表示本次调用至少执行了一次回调。
+    /// handler 抛出异常时，本次通知已消费，不会重放。
     /// 文件锁的关系不变：门铃失败不会把 Primary 变成 Error。
     bool process_doorbell(int timeout_ms = 0);
 
     /// 返回门铃监听 fd；门铃不可用时返回 -1。
     ///
-    /// 可以交给 poll、select 或 Qt QSocketNotifier 监听；fd 可读时
-    /// 再调用 process_doorbell(0)，不要直接读取该 fd。
+    /// 这是借用 fd：归 Guard 所有，有效至 Guard 析构；调用方不得 close
+    /// 或修改它。可以交给 poll、select 或 Qt QSocketNotifier 监听；
+    /// fd 可读时再调用 process_doorbell(0)，不要直接读取该 fd。
     int doorbell_fd() const noexcept;
 
 private:
