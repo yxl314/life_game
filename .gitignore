@@ -4,7 +4,7 @@ build-*/
 out/
 docs/doxygen/
 
-# cpp-audit / cxx_ci 检查产物
+# cxx_audit / cxx_ci 检查产物
 reports/
 ci-logs/
 

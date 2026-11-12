@@ -1,7 +1,7 @@
-# cpp-audit 配置 —— life_game
+# cxx_audit 配置 —— life_game
 #
 # 用法（在仓库根目录）：
-#     PYTHONPATH=/home/honor/桌面/code/cpp-audit/src \
+#     PYTHONPATH=../cxx_audit/src \
 #         python3 -m cpp_audit -c audit.toml all
 #
 # 单项：
@@ -53,7 +53,7 @@ report = "reports/cpd.txt"
 [asan]
 # 当前机器是 PRoot-Distro，ASan 运行期会报
 #   AddressSanitizer: CHECK failed: sanitizer_allocator_primary64.h
-# 这是运行环境限制（cpp-audit README 已说明），不是代码问题。
+# 这是运行环境限制（cxx_audit README 已说明），不是代码问题。
 # 因此默认不纳入 all；ASan 构建仍可用：
 #   python3 -m cpp_audit -c audit.toml build --kind asan
 # 在普通 Linux 主机上把 enabled 改回 true 即可执行完整运行期检查。

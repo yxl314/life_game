@@ -312,9 +312,9 @@ UI 测试输出 `/tmp/lifegame-ui-tests.png`。界面用例需要离屏平台插
 本仓库还提供两份外部工具配置，报告和日志都已加入 `.gitignore`：
 
 ```bash
-# cpp-audit：clang-tidy + PMD CPD + Valgrind（ASan 视运行环境而定）
-PYTHONPATH=../cpp-audit/src python3 -m cpp_audit -c audit.toml all
-PYTHONPATH=../cpp-audit/src python3 -m cpp_audit -c audit.toml build --kind asan
+# cxx_audit：clang-tidy + PMD CPD + Valgrind（ASan 视运行环境而定）
+PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml build --kind asan
 
 # cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
 python3 ../cxx_ci/ci/ci.py -c ci.toml
