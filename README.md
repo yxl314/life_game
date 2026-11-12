@@ -223,7 +223,7 @@ tools/layering_selftest.py    门禁负向 fixture
 ```bash
 # 主程序
 mkdir -p build/app && cd build/app
-qmake6 ../../life_game.pro && make -j6
+qmake6 ../../life_game.pro && make -j4
 cd ../.. && ./build/app/lifegame
 
 # 全部测试（各自构建、各自运行，最后跑两个分层检查）
@@ -237,7 +237,7 @@ cd ../.. && ./build/app/lifegame
 
 ```bash
 mkdir -p build/tests/view && cd build/tests/view
-qmake6 /路径/life_game/tests/view_tests.pro && make -j6
+qmake6 /路径/life_game/tests/view_tests.pro && make -j4
 QT_QPA_PLATFORM=offscreen ./bin/view_tests
 ```
 
@@ -254,7 +254,7 @@ qmake 会把源码目录的**绝对路径**写进 Makefile 的若干规则里，
 
 ```bash
 mkdir -p /tmp/lifegame-build && cd /tmp/lifegame-build
-qmake6 /path/to/life_game/life_game.pro && make -j6
+qmake6 /path/to/life_game/life_game.pro && make -j4
 ```
 
 `tests/run_all.sh` 把产物放在仓库内的 `build/tests/` 下（能正常工作），若在非 ASCII

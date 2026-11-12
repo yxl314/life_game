@@ -14,7 +14,7 @@ QMAKE=${QMAKE:-qmake6}
 # 额外 qmake 参数，例如 ASan CI：
 #   QMAKE_ARGS='QMAKE_CXXFLAGS+=-fsanitize=address QMAKE_LFLAGS+=-fsanitize=address'
 QMAKE_ARGS=${QMAKE_ARGS:-}
-JOBS=${JOBS:-6}
+JOBS=${JOBS:-4}
 FILTER=${1:-}
 OUT="$ROOT/build/tests"
 STATUS=0

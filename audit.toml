@@ -40,7 +40,7 @@ header_filter = ".*/src/.*"
 report = "reports/clang-tidy.txt"
 fail_on_warnings = true
 # 本机统一限制为 6 路并行（clang-tidy 与 ASan/Valgrind 构建共用）。
-jobs = 6
+jobs = 4
 
 [cpd]
 enabled = true

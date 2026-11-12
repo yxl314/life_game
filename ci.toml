@@ -13,7 +13,6 @@ build_system = "qmake"
 source_dir = "."
 project_file = "life_game.pro"
 build_dir = "build/ci"
-build_args = ["-j6"]
 
 # run_all.sh 把测试产物放在 build/tests/，clean 阶段一并清理。
 clean_paths = ["build/tests"]

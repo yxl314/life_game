@@ -23,7 +23,7 @@ jobs:
           mkdir -p build/ci
           cd build/ci
           qmake6 ../../life_game.pro
-          make -j6
+          make -j4
 
       - name: Architecture gate
         run: python3 tools/check_layering.py .
@@ -62,7 +62,7 @@ jobs:
           qmake6 ../../life_game.pro \
             "QMAKE_CXXFLAGS+=-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
             "QMAKE_LFLAGS+=-fsanitize=address,undefined"
-          make -j6
+          make -j4
 
       - name: Sanitized tests
         env:
