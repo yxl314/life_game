@@ -1,6 +1,6 @@
 #include "service/rle_file_service.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QFile>
 #include <QSaveFile>

@@ -8,7 +8,7 @@
 #include <QString>
 
 #include <singleproc/singleproc.hpp>
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include "app/main_window.h"
 #include "view/theme.h"
@@ -46,12 +46,12 @@ LogSetup setupLogging(bool verbose, const QString& requestedPath)
     }
     QDir().mkpath(directory);
 
-    stacklog::Config config;
+    stacklog::config config;
     config.dir = directory.toStdString();
     config.base_name = baseName.toStdString();
     config.max_file_size = 2ULL * 1024 * 1024;
     config.max_files = 3;
-    config.level = verbose ? stacklog::Level::Debug : stacklog::Level::Info;
+    config.min_level = verbose ? stacklog::level::debug : stacklog::level::info;
 
     LogSetup setup;
     setup.ready = stacklog::init(config);

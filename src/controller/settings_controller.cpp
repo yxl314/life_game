@@ -1,6 +1,6 @@
 #include "controller/settings_controller.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 #include "controller/error_text.h"
 #include "controller/session_controller.h"
 

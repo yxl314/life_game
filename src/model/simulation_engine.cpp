@@ -1,6 +1,6 @@
 #include "model/simulation_engine.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QPair>
 #include <QThreadPool>

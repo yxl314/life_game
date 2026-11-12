@@ -145,8 +145,8 @@ LIFEGAME_SINGLEPROC_SOURCES = \
     $$LIFEGAME_ROOT/third_party/singleproc/src/singleproc.cpp
 
 LIFEGAME_STACKLOG_HEADERS = \
-    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/stacklog.h \
-    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/version.h
+    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/stacklog.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/version.hpp
 
 LIFEGAME_STACKLOG_SOURCES = \
     $$LIFEGAME_ROOT/third_party/stacklog/src/stacklog.cpp

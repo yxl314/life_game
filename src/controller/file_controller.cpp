@@ -1,6 +1,6 @@
 #include "controller/file_controller.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include "view/dialogs.h"
 

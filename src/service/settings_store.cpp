@@ -1,6 +1,6 @@
 #include "service/settings_store.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QMetaType>
 #include <QSettings>

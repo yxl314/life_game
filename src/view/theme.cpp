@@ -1,6 +1,6 @@
 #include "view/theme.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QApplication>
 #include <QFile>

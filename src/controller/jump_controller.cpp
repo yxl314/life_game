@@ -1,6 +1,6 @@
 #include "controller/jump_controller.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 #include "controller/error_text.h"
 
 #include <algorithm>

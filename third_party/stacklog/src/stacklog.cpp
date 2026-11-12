@@ -1,4 +1,4 @@
-#include "stacklog/stacklog.h"
+#include <stacklog/stacklog.hpp>
 
 #include <atomic>
 #include <cerrno>
@@ -13,9 +13,8 @@
 
 #ifdef _WIN32
 #include <direct.h>
-#else
-#include <sys/stat.h>
 #endif
+#include <sys/stat.h>
 
 namespace stacklog
 {
@@ -23,42 +22,91 @@ namespace
 {
 
 /// 线程内追踪栈、节点序号和线程注册序号。
-struct TraceContext
+struct trace_context
 {
-    std::vector<TraceFrame> stack;
-    std::uint64_t           node_sequence     = 0;
-    std::uint64_t           thread_sequence   = 0;
-    bool                    thread_registered = false;
+    std::vector<trace_frame> stack;
+    std::uint64_t node_sequence = 0;
+    std::uint64_t thread_sequence = 0;
+    bool thread_registered = false;
 };
 
 /// 进程级 trace 序号。
-std::atomic<std::uint64_t> g_trace_sequence(0);
+std::atomic<std::uint64_t> trace_sequence(0);
 
 /// 进程级线程注册序号。
-std::atomic<std::uint64_t> g_thread_sequence(0);
+std::atomic<std::uint64_t> thread_sequence_counter(0);
 
 /// 运行期最低级别。
-std::atomic<int> g_level(static_cast<int>(Level::Info));
+std::atomic<int> current_level(static_cast<int>(level::info));
 
 /// 未初始化降级提示只打印一次。
-std::atomic<int> g_fallback_hinted(0);
+std::atomic<int> fallback_hinted(0);
 
 /// 日志器共享状态。
-struct LoggerState
+struct logger_state
 {
-    std::mutex    mutex;
+    std::mutex mutex;
     std::ofstream file;
-    Config        config;
-    std::string   path;
+    config options;
+    std::string path;
     std::uint64_t written_bytes = 0;
-    bool          ready         = false;
+    std::uint64_t writes_since_check = 0;
+    std::uint64_t failed_writes = 0;
+    std::uint64_t rotation_retry_size = 0;
+    bool active = false;
+    bool ready = false;
 };
 
 /// 进程常驻状态；不析构，避免静态析构顺序问题。
-LoggerState& state()
+logger_state& state()
 {
-    static LoggerState* instance = new LoggerState;
+    static logger_state* instance = new logger_state;
     return *instance;
+}
+
+bool path_exists(const std::string& path)
+{
+#ifdef _WIN32
+    struct _stat info;
+    return _stat(path.c_str(), &info) == 0;
+#else
+    struct stat info;
+    return ::stat(path.c_str(), &info) == 0;
+#endif
+}
+
+bool regular_file_size(const std::string& path, std::uint64_t& size)
+{
+#ifdef _WIN32
+    struct _stat info;
+    if (_stat(path.c_str(), &info) != 0 || (info.st_mode & _S_IFMT) != _S_IFREG)
+    {
+        return false;
+    }
+#else
+    struct stat info;
+    if (::stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode))
+    {
+        return false;
+    }
+#endif
+    size = static_cast<std::uint64_t>(info.st_size);
+    return true;
+}
+
+/// 以追加方式重新打开当前日志文件，并从实际文件大小恢复写入计数。
+bool open_append_locked(logger_state& logger)
+{
+    logger.file.clear();
+    logger.file.open(logger.path.c_str(), std::ios::out | std::ios::app | std::ios::binary);
+    if (!logger.file.is_open())
+    {
+        return false;
+    }
+
+    std::uint64_t size = 0;
+    logger.written_bytes = regular_file_size(logger.path, size) ? size : 0;
+    return true;
 }
 
 std::string escape_field(const std::string& value)
@@ -94,19 +142,19 @@ std::string dash_if_empty(const std::string& value)
     return value.empty() ? std::string("-") : value;
 }
 
-const char* level_name(Level level)
+const char* level_name(level value)
 {
-    switch (level)
+    switch (value)
     {
-    case Level::Debug:
+    case level::debug:
         return "DEBUG";
-    case Level::Info:
+    case level::info:
         return "INFO";
-    case Level::Warn:
+    case level::warn:
         return "WARN";
-    case Level::Error:
+    case level::error:
         return "ERROR";
-    case Level::Off:
+    case level::off:
         return "OFF";
     }
     return "UNKNOWN";
@@ -114,17 +162,17 @@ const char* level_name(Level level)
 
 std::string base_name(const char* file)
 {
-    if (NULL == file)
+    if (nullptr == file)
     {
         return "-";
     }
     const char* slash = std::strrchr(file, '/');
-    const char* back  = std::strrchr(file, '\\');
-    if (NULL != back && (NULL == slash || back > slash))
+    const char* back = std::strrchr(file, '\\');
+    if (nullptr != back && (nullptr == slash || back > slash))
     {
         slash = back;
     }
-    return (NULL == slash) ? std::string(file) : std::string(slash + 1);
+    return (nullptr == slash) ? std::string(file) : std::string(slash + 1);
 }
 
 std::string timestamp()
@@ -137,15 +185,15 @@ std::string timestamp()
     std::tm tm_value;
     std::memset(&tm_value, 0, sizeof(tm_value));
 #ifdef _WIN32
-    localtime_s(&tm_value, &seconds);
+    (void)localtime_s(&tm_value, &seconds);
 #else
-    localtime_r(&seconds, &tm_value);
+    (void)localtime_r(&seconds, &tm_value);
 #endif
 
     char buffer[32];
-    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_value);
+    (void)std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_value);
     char result[40];
-    std::snprintf(result, sizeof(result), "%s.%03lld", buffer, milliseconds);
+    (void)std::snprintf(result, sizeof(result), "%s.%03lld", buffer, milliseconds);
     return std::string(result);
 }
 
@@ -193,8 +241,7 @@ bool make_dirs(const std::string& dir)
             continue;
         }
         const std::string parent = dir.substr(0, i);
-        if (parent.empty() || parent == "/" ||
-            (parent.size() == 2 && parent[1] == ':'))
+        if (parent.empty() || parent == "/" || (parent.size() == 2 && parent[1] == ':'))
         {
             continue;
         }
@@ -206,42 +253,42 @@ bool make_dirs(const std::string& dir)
     return make_one_dir(dir);
 }
 
-TraceContext& trace_context()
+trace_context& thread_trace_context()
 {
-    static thread_local TraceContext context;
+    static thread_local trace_context context;
     return context;
 }
 
 /// 给每个线程分配进程内唯一的注册序号。
-std::uint64_t thread_sequence(TraceContext& context)
+std::uint64_t thread_registration_sequence(trace_context& context)
 {
     if (!context.thread_registered)
     {
-        context.thread_sequence = g_thread_sequence.fetch_add(1) + 1;
+        context.thread_sequence = thread_sequence_counter.fetch_add(1) + 1;
         context.thread_registered = true;
     }
     return context.thread_sequence;
 }
 
-TraceFrame* current_frame()
+trace_frame* current_frame()
 {
-    TraceContext& context = trace_context();
-    return context.stack.empty() ? NULL : &context.stack.back();
+    trace_context& context = thread_trace_context();
+    return context.stack.empty() ? nullptr : &context.stack.back();
 }
 
 std::string make_trace_id()
 {
-    const std::uint64_t sequence = g_trace_sequence.fetch_add(1) + 1;
+    const std::uint64_t sequence = trace_sequence.fetch_add(1) + 1;
     const long long milliseconds =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     return "t-" + std::to_string(milliseconds) + "-" + std::to_string(sequence);
 }
 
 void begin_trace(const std::string& name)
 {
-    TraceContext& context = trace_context();
-    TraceFrame frame;
+    trace_context& context = thread_trace_context();
+    trace_frame frame;
     frame.scope = name.empty() ? std::string("unnamed") : name;
 
     if (context.stack.empty())
@@ -250,48 +297,47 @@ void begin_trace(const std::string& name)
     }
     else
     {
-        frame.trace_id  = context.stack.back().trace_id;
+        frame.trace_id = context.stack.back().trace_id;
         frame.parent_id = context.stack.back().node_id;
     }
 
     // 节点号加入线程注册序号，保证跨线程接续后仍进程内唯一。
-    const std::uint64_t thread_id = thread_sequence(context);
+    const std::uint64_t thread_id = thread_registration_sequence(context);
     ++context.node_sequence;
-    frame.node_id = frame.trace_id + "-t" + std::to_string(thread_id) + "-" +
-                    std::to_string(context.node_sequence);
+    frame.node_id = frame.trace_id + "-t" + std::to_string(thread_id) + "-" + std::to_string(context.node_sequence);
     context.stack.push_back(frame);
 }
 
 void end_trace()
 {
-    TraceContext& context = trace_context();
+    trace_context& context = thread_trace_context();
     if (!context.stack.empty())
     {
         context.stack.pop_back();
     }
 }
 
-void restore_trace(const TraceFrame& frame)
+void restore_trace(const trace_frame& frame)
 {
     if (frame.valid())
     {
-        trace_context().stack.push_back(frame);
+        thread_trace_context().stack.push_back(frame);
     }
 }
 
-std::string format_line(
-    Level level, const TraceFrame* frame, const std::string& message, const char* file, int line)
+std::string
+format_line(level severity, const trace_frame* frame, const std::string& message, const char* file, int line)
 {
-    const std::string scope_name = (NULL == frame) ? std::string("-") : escape_field(dash_if_empty(frame->scope));
-    const std::string trace_id   = (NULL == frame) ? std::string("-") : escape_field(dash_if_empty(frame->trace_id));
-    const std::string node_id    = (NULL == frame) ? std::string("-") : escape_field(dash_if_empty(frame->node_id));
-    const std::string parent_id  = (NULL == frame) ? std::string("-") : escape_field(dash_if_empty(frame->parent_id));
-    const std::string location   = escape_field(base_name(file) + ":" + std::to_string(line));
+    const std::string scope_name = (nullptr == frame) ? std::string("-") : escape_field(dash_if_empty(frame->scope));
+    const std::string trace_id = (nullptr == frame) ? std::string("-") : escape_field(dash_if_empty(frame->trace_id));
+    const std::string node_id = (nullptr == frame) ? std::string("-") : escape_field(dash_if_empty(frame->node_id));
+    const std::string parent_id = (nullptr == frame) ? std::string("-") : escape_field(dash_if_empty(frame->parent_id));
+    const std::string location = escape_field(base_name(file) + ":" + std::to_string(line));
 
     std::string result;
     result += timestamp();
     result += "|";
-    result += level_name(level);
+    result += level_name(severity);
     result += "|";
     result += trace_id;
     result += "|";
@@ -303,150 +349,222 @@ std::string format_line(
     result += "|";
     result += location;
     result += "|";
-    result += escape_field(message);
+    result += escape_field(dash_if_empty(message));
     return result;
 }
 
-void rotate_locked(LoggerState& logger)
+void rotate_locked(logger_state& logger)
 {
     logger.file.flush();
     logger.file.close();
+    logger.file.clear();
 
     const std::string base = logger.path;
-    if (logger.config.max_files > 0)
+    bool ok = true;
+
+    if (logger.options.max_files > 0)
     {
-        std::remove((base + "." + std::to_string(logger.config.max_files)).c_str());
-        for (unsigned index = logger.config.max_files; index > 1; --index)
+        const std::string oldest = base + "." + std::to_string(logger.options.max_files);
+        if (path_exists(oldest) && std::remove(oldest.c_str()) != 0)
         {
-            const std::string from = base + "." + std::to_string(index - 1);
-            const std::string to   = base + "." + std::to_string(index);
-            std::rename(from.c_str(), to.c_str());
+            ok = false;
         }
-        std::rename(base.c_str(), (base + ".1").c_str());
+
+        if (ok)
+        {
+            for (unsigned index = logger.options.max_files; index > 1; --index)
+            {
+                const std::string from = base + "." + std::to_string(index - 1);
+                const std::string to = base + "." + std::to_string(index);
+                if (!path_exists(from))
+                {
+                    continue;
+                }
+                if (path_exists(to) && std::remove(to.c_str()) != 0)
+                {
+                    ok = false;
+                    break;
+                }
+                if (std::rename(from.c_str(), to.c_str()) != 0)
+                {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+
+        if (ok && path_exists(base))
+        {
+            const std::string first = base + ".1";
+            if ((path_exists(first) && std::remove(first.c_str()) != 0) ||
+                std::rename(base.c_str(), first.c_str()) != 0)
+            {
+                ok = false;
+            }
+        }
+    }
+    else
+    {
+        ok = false;
+    }
+
+    if (!ok)
+    {
+        // 归档失败时继续写当前文件，并允许文件再增长一个上限后重试。
+        logger.ready = open_append_locked(logger);
+        logger.rotation_retry_size = logger.ready ? logger.written_bytes + logger.options.max_file_size : 0;
+        return;
     }
 
     logger.written_bytes = 0;
-    logger.file.open(logger.path.c_str(), std::ios::out | std::ios::app | std::ios::binary);
-    if (!logger.file.is_open())
-    {
-        logger.ready = false;
-    }
+    logger.rotation_retry_size = 0;
+    logger.ready = open_append_locked(logger);
 }
 
 void fallback_to_stderr(const std::string& line)
 {
-    if (0 == g_fallback_hinted.fetch_add(1))
+    if (0 == fallback_hinted.fetch_add(1))
     {
-        std::fprintf(stderr, "stacklog: 文件输出未就绪，日志降级到 stderr\n");
+        (void)std::fprintf(stderr, "stacklog: 文件输出未就绪，日志降级到 stderr\n");
     }
-    std::fprintf(stderr, "%s\n", line.c_str());
+    (void)std::fprintf(stderr, "%s\n", line.c_str());
 }
 
 } // namespace
 
-Config::Config()
-    : dir("logs"),
-      base_name("app"),
-      max_file_size(5 * 1024 * 1024),
-      max_files(5),
-      level(Level::Info)
+bool init(const config& cfg)
 {
-}
-
-bool init(const Config& config)
-{
-    if (config.dir.empty() || config.base_name.empty() || config.max_file_size == 0 ||
-        config.max_files == 0)
-    {
-        std::fprintf(stderr, "stacklog: 配置非法，初始化失败\n");
-        return false;
-    }
-
-    LoggerState& logger = state();
+    logger_state& logger = state();
     std::lock_guard<std::mutex> lock(logger.mutex);
 
-    logger.file.close();
+    current_level.store(static_cast<int>(cfg.min_level));
+    logger.active = false;
     logger.ready = false;
-    logger.config = config;
-    logger.path = join_path(config.dir, config.base_name + ".log");
+    logger.file.close();
+    logger.file.clear();
+    logger.options = cfg;
+    logger.path.clear();
     logger.written_bytes = 0;
+    logger.writes_since_check = 0;
+    logger.failed_writes = 0;
+    logger.rotation_retry_size = 0;
 
-    if (!make_dirs(config.dir))
+    if (cfg.dir.empty() || cfg.base_name.empty() || cfg.max_file_size == 0 || cfg.max_files == 0)
     {
-        std::fprintf(stderr, "stacklog: 无法创建日志目录: %s\n", config.dir.c_str());
+        (void)std::fprintf(stderr, "stacklog: 配置非法，初始化失败\n");
         return false;
     }
 
-    std::ifstream existing(logger.path.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
-    if (existing.is_open())
-    {
-        const std::ifstream::pos_type size = existing.tellg();
-        if (size > 0)
-        {
-            logger.written_bytes = static_cast<std::uint64_t>(size);
-        }
-    }
-    existing.close();
+    logger.path = join_path(cfg.dir, cfg.base_name + ".log");
 
-    logger.file.open(logger.path.c_str(), std::ios::out | std::ios::app | std::ios::binary);
-    if (!logger.file.is_open())
+    if (!make_dirs(cfg.dir))
     {
-        std::fprintf(stderr, "stacklog: 无法打开日志文件: %s\n", logger.path.c_str());
+        (void)std::fprintf(stderr, "stacklog: 无法创建日志目录: %s\n", cfg.dir.c_str());
         return false;
     }
 
+    if (!open_append_locked(logger))
+    {
+        (void)std::fprintf(stderr, "stacklog: 无法打开日志文件: %s\n", logger.path.c_str());
+        return false;
+    }
+
+    logger.active = true;
     logger.ready = true;
-    g_level.store(static_cast<int>(config.level));
     return true;
 }
 
 void shutdown()
 {
-    LoggerState& logger = state();
+    logger_state& logger = state();
     std::lock_guard<std::mutex> lock(logger.mutex);
     if (logger.file.is_open())
     {
         logger.file.flush();
         logger.file.close();
     }
+    logger.active = false;
     logger.ready = false;
+    logger.writes_since_check = 0;
+    logger.failed_writes = 0;
+    logger.rotation_retry_size = 0;
 }
 
-void setLevel(Level level)
+void set_level(level value) noexcept
 {
-    g_level.store(static_cast<int>(level));
+    current_level.store(static_cast<int>(value));
 }
 
-bool detail::enabled(Level level)
+bool detail::log_line::is_enabled(level severity) noexcept
 {
-    const int configured = g_level.load();
-    if (configured == static_cast<int>(Level::Off) || level == Level::Off)
+    const int configured = current_level.load();
+    if (configured == static_cast<int>(level::off) || severity == level::off)
     {
         return false;
     }
-    return static_cast<int>(level) >= configured;
+    return static_cast<int>(severity) >= configured;
 }
 
-void detail::write(Level level, const char* file, int line, const std::string& message)
+void detail::log_line::write_line(level severity, const char* file, int line, const std::string& message)
 {
-    if (!enabled(level))
+    if (!is_enabled(severity))
     {
         return;
     }
 
-    const TraceFrame* frame = current_frame();
-    const std::string text = format_line(level, frame, message, file, line);
+    const trace_frame* frame = current_frame();
+    const std::string text = format_line(severity, frame, message, file, line);
 
-    LoggerState& logger = state();
-    bool ready = false;
+    logger_state& logger = state();
     bool written = false;
     {
+        const std::uint64_t check_interval = 1024;
+        const std::uint64_t retry_interval = 32;
+
         std::lock_guard<std::mutex> lock(logger.mutex);
-        ready = logger.ready;
-        if (ready)
+
+        if (logger.active && !logger.ready)
+        {
+            ++logger.failed_writes;
+            if (logger.failed_writes >= retry_interval)
+            {
+                logger.failed_writes = 0;
+                logger.ready = open_append_locked(logger);
+                if (logger.ready)
+                {
+                    logger.writes_since_check = 0;
+                    logger.rotation_retry_size = 0;
+                }
+            }
+        }
+
+        if (logger.ready)
+        {
+            ++logger.writes_since_check;
+            if (logger.writes_since_check >= check_interval)
+            {
+                logger.writes_since_check = 0;
+                std::uint64_t actual_size = 0;
+                if (!regular_file_size(logger.path, actual_size) || actual_size != logger.written_bytes)
+                {
+                    // 文件被外部删除、截断或轮转后，重新打开路径上的文件。
+                    logger.file.flush();
+                    logger.file.close();
+                    logger.file.clear();
+                    logger.written_bytes = 0;
+                    logger.ready = open_append_locked(logger);
+                    logger.rotation_retry_size = 0;
+                }
+            }
+        }
+
+        if (logger.ready)
         {
             const std::uint64_t required = static_cast<std::uint64_t>(text.size() + 1);
-            if (logger.written_bytes + required > logger.config.max_file_size)
+            const std::uint64_t next_size = logger.written_bytes + required;
+            const bool over_limit = next_size > logger.options.max_file_size;
+            const bool retry_ready = logger.rotation_retry_size == 0 || next_size > logger.rotation_retry_size;
+            if (over_limit && retry_ready)
             {
                 rotate_locked(logger);
             }
@@ -464,73 +582,88 @@ void detail::write(Level level, const char* file, int line, const std::string& m
                 else
                 {
                     logger.ready = false;
+                    logger.failed_writes = 0;
                 }
             }
         }
     }
 
-    if (!ready || !written)
+    if (!written)
     {
         fallback_to_stderr(text);
     }
 }
 
-TraceScope::TraceScope(const std::string& name)
+trace_scope::trace_scope(const std::string& name)
 {
     begin_trace(name);
 }
 
-TraceScope::~TraceScope()
+trace_scope::~trace_scope() noexcept
 {
     end_trace();
 }
 
-TraceFrame::TraceFrame()
-{
-}
-
-bool TraceFrame::valid() const
+bool trace_frame::valid() const noexcept
 {
     return !trace_id.empty() && !node_id.empty();
 }
 
-TraceFrame captureTrace()
+trace_frame capture_trace()
 {
-    const TraceFrame* frame = current_frame();
-    return (NULL == frame) ? TraceFrame() : *frame;
+    const trace_frame* frame = current_frame();
+    return (nullptr == frame) ? trace_frame() : *frame;
 }
 
-RestoreScope::RestoreScope(const TraceFrame& frame)
-    : m_linked(frame.valid())
+restore_scope::restore_scope(const trace_frame& frame): linked_(frame.valid())
 {
-    if (m_linked)
+    if (linked_)
     {
         restore_trace(frame);
     }
 }
 
-RestoreScope::~RestoreScope()
+restore_scope::~restore_scope() noexcept
 {
-    if (m_linked)
+    if (linked_)
     {
         end_trace();
     }
 }
 
-detail::LogLine::LogLine(Level level, const char* file, int line)
-    : m_level(level),
-      m_file(file),
-      m_line(line),
-      m_enabled(detail::enabled(level))
+detail::restore_trace_scope::restore_trace_scope(const trace_frame& frame, const std::string& name)
+    : restore_(frame), trace_(name)
 {
 }
 
-detail::LogLine::~LogLine()
+detail::restore_trace_scope::~restore_trace_scope() noexcept = default;
+
+detail::log_line::log_line(level severity, const char* file, int line)
+    : severity_(severity), file_(file), line_(line), enabled_(is_enabled(severity))
 {
-    if (m_enabled)
+}
+
+detail::log_line::~log_line() noexcept
+{
+    if (!enabled_)
     {
-        detail::write(m_level, m_file, m_line, m_stream.str());
+        return;
     }
+
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
+    try
+    {
+        write_line(severity_, file_, line_, stream_.str());
+    }
+    catch (...)
+    {
+        // 日志写入不能从析构函数抛出；失败时只向 stderr 提示一次固定信息。
+        (void)std::fprintf(stderr, "stacklog: 日志写入失败\n");
+    }
+#else
+    // -fno-exceptions 构建下无法捕获；日志失败仍由进程的终止策略处理。
+    write_line(severity_, file_, line_, stream_.str());
+#endif
 }
 
 } // namespace stacklog

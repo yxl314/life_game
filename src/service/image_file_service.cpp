@@ -1,6 +1,6 @@
 #include "service/image_file_service.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QImage>
 #include <QImageWriter>

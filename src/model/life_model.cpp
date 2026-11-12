@@ -1,6 +1,6 @@
 #include "model/life_model.h"
 
-#include <stacklog/stacklog.h>
+#include <stacklog/stacklog.hpp>
 
 #include <QMetaObject>
 #include <QMetaType>
