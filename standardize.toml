@@ -1,0 +1,27 @@
+# cxx_ci/standardize 配置 —— life_game
+#
+# Qt 项目同样执行全量 clang-tidy。禁改区和第三方代码通过 exclude 排除；
+# Qt 自身头文件由项目 .clang-tidy 的 HeaderFilterRegex 限制，不属于本项目
+# 检查范围。standardize 只把修复应用到当前文件，不会顺带改写被 include
+# 的 Qt 或第三方头文件。
+#
+# 测试是独立 qmake 工程，不在主工程的 compile_commands.json 中；这里覆盖
+# 应用 src，测试的构建和运行由 cxx_ci 负责。
+#
+# 在仓库根目录运行：
+#     python3 ../cxx_ci/standardize/standardize.py --check
+#     python3 ../cxx_ci/standardize/standardize.py
+#     python3 ../cxx_ci/standardize/standardize.py --apply
+[standardize]
+paths = ["src"]
+exclude = ["build", "third_party"]
+jobs = 4
+build_dir = "build/standardize"
+diff = "standardize.diff"
+stage_dir = ".standardize"
+qmake = "qmake6"
+auto_compile_commands = true
+tidy = true
+# 当前 Qt 应用尚未做过全仓 clang-format；先启用全量 tidy 门禁，格式统一
+# 作为独立改动处理，避免检查阶段产生大规模无关 diff。
+format = false

@@ -17,22 +17,14 @@ run() {
 case "$STAGE" in
     all)
         run python3 ../cxx_ci/ci/ci.py -c ci.toml --jobs "$JOBS"
-        if [ -f standardize.toml ]; then
-            run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
-        else
-            echo "[check] style skipped (no standardize.toml)"
-        fi
+        run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
         run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
         ;;
     ci)
         run python3 ../cxx_ci/ci/ci.py -c ci.toml --jobs "$JOBS"
         ;;
     style)
-        if [ -f standardize.toml ]; then
-            run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
-        else
-            echo "[check] style skipped (no standardize.toml)"
-        fi
+        run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
         ;;
     audit)
         run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all

@@ -1,4 +1,8 @@
 ---
+# 只检查本项目 src/ 下的源码和头文件。Qt 自身头文件、系统头文件和
+# third_party 不进入诊断。正则同时允许 ./ 和 ../ 前缀，但不允许
+# src/../third_party 这类借道 src 的路径。
 Checks: '-*,clang-analyzer-*,bugprone-*,cert-*,portability-*,performance-*,-bugprone-easily-swappable-parameters,-performance-enum-size'
-HeaderFilterRegex: 'src/.*'
+HeaderFilterRegex: '^(\./|\.\./)*src/([^.]|\.[^./])'
+SystemHeaders: false
 FormatStyle: file

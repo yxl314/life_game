@@ -318,7 +318,17 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml build --kind asan
 
 # cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
 python3 ../cxx_ci/ci/ci.py -c ci.toml
+
+# cxx_ci/standardize：主工程 src 的全量 tidy
+python3 ../cxx_ci/standardize/standardize.py --check
+
+# 一键执行 CI + standardize + audit
+./check.sh all
 ```
+
+`standardize` 覆盖主工程 `src`；测试是独立 qmake 工程，不在主工程的
+`compile_commands.json` 中，由 `cxx_ci` 负责构建和运行。禁改区/第三方代码由
+`exclude` 排除，Qt 自身头文件由 `.clang-tidy` 的 `HeaderFilterRegex` 忽略。
 
 结果在 `reports/`，CI 完整日志在 `ci-logs/`。当前 PRoot-Distro 环境无法运行
 ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`

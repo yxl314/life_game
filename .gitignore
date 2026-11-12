@@ -7,6 +7,8 @@ docs/doxygen/
 # cxx_audit / cxx_ci 检查产物
 reports/
 ci-logs/
+.standardize/
+standardize.diff
 
 # Compiler / linker artifacts
 *.o
