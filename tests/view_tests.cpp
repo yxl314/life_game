@@ -58,6 +58,7 @@ private slots:
     void progressDialogProgrammaticCloseDoesNotCancel();
     void largeBoardRendersAndExports();
     void zoomedBoardPaintsVisibleRegion();
+    void resizeResetsZoom();
 };
 
 void ViewTests::speedScale()
@@ -124,7 +125,7 @@ void ViewTests::boardViewRendersPushedStateAndCapsExport()
     lifegame::view::BoardView view;
     pushBoard(view, grid);
     view.resize(640, 480);
-    view.refresh();
+    view.update();
 
     const QImage image = view.renderBoardImage();
     QVERIFY(!image.isNull());
@@ -218,7 +219,7 @@ void ViewTests::largeBoardRendersAndExports()
     lifegame::view::BoardView view;
     view.resize(1180, 820);
     pushBoard(view, grid);
-    view.refresh();
+    view.update();
 
     const QImage image = view.renderBoardImage();
     QVERIFY(!image.isNull());
@@ -251,6 +252,29 @@ void ViewTests::zoomedBoardPaintsVisibleRegion()
     QVERIFY(!exported.isNull());
     QVERIFY(exported.width() > 0);
     QVERIFY(exported.height() > 0);
+}
+
+void ViewTests::resizeResetsZoom()
+{
+    lifegame::domain::Grid small(10, 10);
+    small.setCell(0, 0, true);
+
+    lifegame::view::BoardView view;
+    view.resize(400, 300);
+    pushBoard(view, small);
+    const double fitted = view.cellPixels();
+    view.zoomIn();
+    view.zoomIn();
+    QVERIFY(view.cellPixels() != fitted);
+
+    lifegame::domain::Grid larger(20, 20);
+    larger.setCell(1, 1, true);
+    pushBoard(view, larger);
+
+    lifegame::view::BoardView fresh;
+    fresh.resize(400, 300);
+    pushBoard(fresh, larger);
+    QCOMPARE(view.cellPixels(), fresh.cellPixels());
 }
 
 QTEST_MAIN(ViewTests)

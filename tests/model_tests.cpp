@@ -1,10 +1,12 @@
 #include <QSignalSpy>
 #include <QtTest>
 
+#include <new>
 #include <string>
 
 #include "domain/pattern_library.h"
 #include "domain/rle.h"
+#include "model/jump_runner.h"
 #include "model/life_model.h"
 
 #define VERIFY_OK(expression) QVERIFY(lifegame::model::succeeded(expression))
@@ -49,6 +51,7 @@ private slots:
     void largeAsyncStep();
     void jumpForwardAndBackward();
     void jumpCanBeCancelled();
+    void jumpStopsAtExtinctionGeneration();
     void loadWhileJumpingIsRejected();
     void snapshotInterval();
     void commandResults();
@@ -311,6 +314,29 @@ void ModelTests::jumpForwardAndBackward()
 
     VERIFY_FAIL(model.startJump(-1));
     VERIFY_FAIL(model.startJump(0));
+}
+
+void ModelTests::jumpStopsAtExtinctionGeneration()
+{
+    std::shared_ptr<lifegame::domain::Grid> board(
+        new (std::nothrow) lifegame::domain::Grid(1, 1));
+    QVERIFY(board != nullptr);
+    board->setCell(0, 0, true);
+
+    lifegame::model::JumpRequest request;
+    request.startBoard = board;
+    request.startGeneration = 0;
+    request.targetGeneration = 200000;
+    request.totalGenerations = 200000;
+    request.epoch = 0;
+    request.interval = 100;
+
+    const lifegame::model::JumpOutcome outcome = lifegame::model::runJump(request);
+    VERIFY_OK(outcome.error);
+    QVERIFY(outcome.board != nullptr);
+    // 单格棋盘在第 1 代灭绝；检查点每 64 代触发一次，重放必须报告 64，
+    // 而不是仍未到达的目标代数 200000。
+    QCOMPARE(outcome.generation, 64);
 }
 
 void ModelTests::jumpCanBeCancelled()

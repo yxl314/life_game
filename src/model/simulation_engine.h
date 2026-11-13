@@ -24,7 +24,8 @@ namespace lifegame::model
  *
  * 引擎持有输入快照和输出缓冲区。`request()` 返回单调递增的编号；
  * 计算完成时在 UI 线程发出 `stepReady(id)`。`discardPending()` 让在途结果
- * 失效（工作线程仍会跑完，但不会发出信号；返回后才允许新的请求）。
+ * 失效（工作线程仍会跑完，但不会发出信号）。在途计算回收前 request()
+ * 返回 Busy；需要等 onFinished 之后才能发起下一次请求。
  *
  * 一代计算的 QtConcurrent 管线由本类独占；跳转重放也使用 QtConcurrent，
  * 但放在 LifeModel 中，与本类保持分离，使 LifeModel 专注状态与不变量。

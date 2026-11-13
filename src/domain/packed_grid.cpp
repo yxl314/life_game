@@ -26,6 +26,11 @@ std::unique_ptr<std::uint64_t[]> allocateWords(std::size_t count)
 PackedGrid::PackedGrid(const Grid& board)
     : m_width(board.width()), m_height(board.height())
 {
+    if (m_width <= 0 || m_height <= 0)
+    {
+        m_valid = false;
+        return;
+    }
     const std::size_t count =
         static_cast<std::size_t>(m_width) * static_cast<std::size_t>(m_height);
     m_wordCount = (count + 63u) / 64u;
@@ -42,6 +47,13 @@ PackedGrid::PackedGrid(const Grid& board)
     }
 
     const Cell* cells = board.data();
+    if (cells == nullptr)
+    {
+        m_valid = false;
+        m_wordCount = 0;
+        m_words.reset();
+        return;
+    }
     for (std::size_t i = 0; i < count; ++i)
     {
         if (cells[i] != kDead)

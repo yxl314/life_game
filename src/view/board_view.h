@@ -41,9 +41,6 @@ public:
     /// @param parent 父控件。
     explicit BoardView(QWidget* parent = nullptr);
 
-    /// @brief 请求重绘。
-    void refresh();
-
     /// @brief 一次性应用一整帧棋盘状态。
     /// @param frame 棋盘指针、存活数与运行状态。
     void applyFrame(const BoardFrame& frame);
@@ -62,19 +59,23 @@ public:
     /// @return 最小建议尺寸。
     QSize minimumSizeHint() const override;
 
-    /// @brief 查询网格线是否显示。
-    /// @return 显示时返回 true。
-    bool gridVisible() const;
-
     /// @brief 把当前棋盘渲染成完整图像。
     /// @return 可直接导出的图像；没有棋盘时返回空图像。
     /// @note 导出分辨率与当前缩放无关。
     QImage renderBoardImage() const override;
 
+    /// @brief 返回当前每格像素数。
+    /// @return 自动适配或手动缩放后的像素数。
+    double cellPixels() const;
+
 public slots:
     /// @brief 设置悬停图案的预览位置。
     /// @param offsets 相对悬停格子的图案偏移。
     void setStampPreview(const QVector<QPoint>& offsets);
+
+    /// @brief 查询网格线是否显示。
+    /// @return 显示时返回 true。
+    bool gridVisible() const;
 
     /// @brief 设置是否显示网格线。
     /// @param visible 是否显示。
@@ -136,9 +137,6 @@ private:
     /// @return 行数；没有棋盘时为 0。
     int boardHeight() const;
 
-    /// @brief 返回当前每格像素数。
-    /// @return 自动适配或手动缩放后的像素数。
-    double cellPixels() const;
     /// @brief 返回棋盘左上角在控件中的位置。
     /// @return 控件坐标。
     QPointF boardTopLeft() const;

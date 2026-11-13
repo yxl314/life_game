@@ -9,8 +9,6 @@
 #
 # 界面相关用例需要离屏平台插件；tests/run_all.sh 会统一导出。
 
-QT += testlib core
-
 TEMPLATE = app
 TARGET   = domain_tests
 CONFIG  += console testcase
@@ -18,6 +16,9 @@ CONFIG  -= app_bundle
 
 LIFEGAME_ROOT = $$PWD/..
 include($$LIFEGAME_ROOT/life_game.pri)
+
+# 领域测试是纯 C++ 自定义 harness，不需要 Qt。
+QT -= core gui
 
 HEADERS += $$LIFEGAME_SHARED_HEADERS
 

@@ -71,7 +71,7 @@ struct DecodedDocument
 {
     Pattern pattern;          ///< 解码出的细胞与尺寸。
     std::string title;        ///< 可选的 `#N` 标题。
-    std::string description;  ///< 可选的 `#C` 描述（只取首行）。
+    std::string description;  ///< 可选的 `#C` 描述（按出现顺序拼接所有行）。
     std::string rule;         ///< 规范 B/S 记法，缺失时为空。
 };
 

@@ -18,6 +18,7 @@ JOBS=${JOBS:-4}
 FILTER=${1:-}
 OUT="$ROOT/build/tests"
 STATUS=0
+MATCHED=0
 
 # 界面相关用例需要离屏平台插件：CI 上没有显示器
 export QT_QPA_PLATFORM=offscreen
@@ -28,6 +29,7 @@ for pro in "$ROOT"/tests/*_tests.pro; do
         *"$FILTER"*) ;;
         *) continue ;;
     esac
+    MATCHED=$((MATCHED + 1))
     dir="$OUT/$name"
     printf '=== %s ===\n' "$name"
     mkdir -p "$dir" || exit 1
@@ -43,7 +45,12 @@ for pro in "$ROOT"/tests/*_tests.pro; do
     fi
 done
 
-# 分层检查：CMake 里那两个 add_test，这里同样跑
+if [ "$MATCHED" -eq 0 ]; then
+    printf '没有测试匹配过滤条件: %s\n' "${FILTER:-<无>}" >&2
+    exit 2
+fi
+
+# 分层检查：与 check.sh layer 相同的两个检查
 if [ -z "$FILTER" ]; then
     for tool in check_layering.py layering_selftest.py; do
         printf '=== %s ===\n' "$tool"

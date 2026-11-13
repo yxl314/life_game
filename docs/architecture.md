@@ -153,8 +153,8 @@ BoardView::cellPressed(row, col)
   → BoardController::onCellPressed
   → LifeModel::setCell(row, col, !alive)
   → LifeModel::boardChanged / statusChanged
-  → BoardController（订阅者）
-  → BoardPresenter::updateNow()
+  → BoardPresenter（订阅 Model 信号）
+  → BoardView::applyFrame
   → BoardView::applyFrame({&model.board(), stats.population, running})
   → ControlPanel::applyState({stats, ...})
 ```
@@ -191,10 +191,12 @@ FileController::openRle()
 - `LifeModel` 以值成员 `domain::Grid m_board` 拥有棋盘；`board()` 返回 `const Grid&`。
 - `BoardPresenter` 在 `boardChanged`/`boardResized` 时把 `&model.board()` 作为 `const Grid*`
   放进 `BoardFrame`，`BoardView::applyFrame()` 一次性应用；View 不复制棋盘。
-- `BoardView::applyFrame()` 在棋盘对象/尺寸变化时重置缩放和平移；平时只 update。
+- `BoardView::applyFrame()` 在棋盘指针或宽高变化时把缩放重置为自动适配并清空平移；
+  平时只 update。
 - `shared::LifeStats`、`shared::AppSettings` 是按值传递的小型值对象，允许拷贝。
-- 棋盘尺寸变化会替换 Model 的 `Grid` 对象；BoardPresenter 下一帧通过 `applyFrame()`
-  更新指针，View 不缓存网格内容。
+- 棋盘尺寸变化时 Model 原地更新值成员 `Grid`；指针通常不变，因此 View 以宽高
+  变化判断是否重置视图。BoardPresenter 下一帧通过 `applyFrame()` 更新指针，
+  View 不缓存网格内容。
 - Model 的 `stats()` 是 O(1) 缓存；View 不逐帧扫描棋盘。
 
 ### 5.1 大棋盘（宽度 1500 × 高度 1000）
@@ -220,7 +222,8 @@ FileController::openRle()
 - Model：`CommandResult`（`Success/Adjusted/Clipped/Busy/.../ComputationFailed`）。
 - Service：`FileError`、`SettingsError`，可附可选系统详情。
 - Controller：`error_text.h` 把错误码映射为一条中文提示；View 不处理技术错误码。
-- 分配失败/OOM 视为不可恢复（进程终止）；大缓冲区使用 `new (std::nothrow)` 的路径返回
+- 普通容器分配失败在 `-fno-exceptions` 下会终止进程；只有显式使用
+  `new (std::nothrow)` 的路径返回
   `OutOfMemory`。
 
 ### 日志与单实例
@@ -252,7 +255,7 @@ FileController::openRle()
 | `controller_tests` | Model→View 推送、面板信号、绘制/图案、定时器、跳转、文件/设置、会话 |
 | `ui_tests` | 完整 MainWindow、确认/取消、Space 焦点、网格同步、截图 |
 | `layering` | include 方向、View/Service↔Model 隔离、CJK/Qt 纯净度、`life_game.pri` 清单 |
-| `layering_selftest` | 门禁的负向 fixture |
+| `layering_selftest` | 门禁的负向 fixture；覆盖模块路径 Qt 头、非层 include、清单注释等绕过 |
 
 `view_tests` 的 `.pro` 只加入 View 与 Domain 的源码；它使用
 `domain::Grid` 直接构造棋盘，不链接 Model，证明 View 可以脱离 Model 测试。

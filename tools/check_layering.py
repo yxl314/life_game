@@ -167,9 +167,15 @@ def check_manifest(root: Path, sources: list[Path]) -> list[str]:
         return ["life_game.pri is missing"]
     text = manifest.read_text(encoding="utf-8", errors="replace")
 
+    # 按 token 比对，避免注释或 a.cpp.bak 之类的子串被当成本文件的登记。
+    manifest_paths: set[str] = set()
+    for line in logical_lines(text):
+        for token in line.split():
+            manifest_paths.add(token.replace("$$LIFEGAME_ROOT/", ""))
+
     for source in sources:
         rel = source.relative_to(root).as_posix()
-        if rel not in text:
+        if rel not in manifest_paths:
             problems.append(f"{source}: source file is not listed in life_game.pri")
 
     return problems
@@ -219,11 +225,16 @@ def main() -> int:
                 )
                 continue
             if canonical is None:
-                # Qt/system header; check the UI-free lists below.
-                header = raw_target.split("/")[0]
-                header = header.split(".")[0]
+                # Qt/system header; Qt 模块路径 <QtWidgets/QWidget> 的真正头名
+                # 是最后一段，不能拿模块名去查 QT_FORBIDDEN。
+                header = raw_target.replace("\\", "/").rsplit("/", 1)[-1].split(".")[0]
                 if layer in QT_FORBIDDEN and header in QT_FORBIDDEN[layer]:
                     problems.append(f"{path}:{lineno}: {layer} may not include {raw_target}")
+                # 纯层/共享层不允许用引号绕过层前缀去 include 第三方项目头。
+                if (match.group(1) == '"' and "/" in raw_target
+                        and layer in {"domain", "shared", "model", "service"}):
+                    problems.append(
+                        f"{path}:{lineno}: {layer} may not include non-layer header {raw_target}")
                 continue
             target_layer = canonical.split("/", 1)[0]
             if target_layer not in ALLOWED[layer]:

@@ -22,34 +22,26 @@ target = "lifegame"
 qmake = "qmake6"
 
 [compat]
-# 本项目明确要求 Qt 6 + C++17；compat 的规则集是面向 C++98 的
-# 候选检查，在这里只会产生误报，因此关闭。需要沿用旧代码库时改回 true
-# 并恢复默认规则。
+# 本项目明确要求 Qt 6 + C++17；compat 的规则集面向 C++98，在这里只会
+# 产生误报，因此关闭。若以后需要兼容旧代码库，应同时启用并显式配置规则，
+# 只把 enabled 改回 true 而不配置 rules 会被工具拒绝。
 enabled = false
 rules = []
 
 [tidy]
 enabled = true
 # clang-tidy 检查集由项目根目录 .clang-tidy 提供。
-report = "reports/clang-tidy.txt"
 fail_on_warnings = true
-# 本机统一限制为 4 路并行。
-jobs = 24
 
 [cpd]
 enabled = true
 dirs = ["src"]
-# 50 token：工具的默认阈值是 70，但这两个工程在 50 下也已经是零重复，
-# 收紧一档能把新出现的小规模复制粘贴挡在门外，又不会被绘制分支的
-# 必要结构重复刷屏。
+# 50 token：工具的默认阈值是 70；本工程在 50 下也是零重复，收紧一档
+# 能把新出现的小规模复制粘贴挡在门外，又不会被绘制分支的必要结构重复刷屏。
 min_tokens = 50
-report = "reports/cpd.txt"
 
 [asan]
-# 当前机器是 PRoot-Distro，ASan 运行期会报
-#   AddressSanitizer: CHECK failed: sanitizer_allocator_primary64.h
-# 这是运行环境限制（cxx_audit README 已说明），不是代码问题。
-# 因此默认不纳入 all；ASan 构建仍可用：
+# GUI 的 ASan 运行依赖图形栈和运行时环境，默认不纳入 all；ASan 构建仍可用：
 #   python3 -m cpp_audit -c audit.toml build --kind asan
 # 在普通 Linux 主机上把 enabled 改回 true 即可执行完整运行期检查。
 enabled = false
@@ -64,7 +56,6 @@ cxxflags = ["-std=c++17", "-fsanitize=address",
 ldflags = ["-fsanitize=address"]
 checks = ["detect_leaks", "detect_stack_use_after_return"]
 options = { halt_on_error = "0", symbolize = "1" }
-report = "reports/asan.txt"
 timeout_sec = 120
 
 [valgrind]
@@ -89,7 +80,6 @@ extra_args = ["--undef-value-errors=no",
               # 默认 12 层会在 GUI 库里就截断，抑制规则按库名匹配时
               # 看不到关键帧；加深到 24 层才是能用的报告
               "--num-callers=24"]
-report = "reports/valgrind.txt"
 timeout_sec = 600
 
 # GUI 程序没有命令行退出路径：在 :101 上启动 Xvfb + openbox，窗口由应用自己的定时器关闭
@@ -98,10 +88,11 @@ timeout_sec = 600
 # 没有 WM 时 WM_DELETE_WINDOW 不会送达应用。
 [run]
 args = []
-env = { DISPLAY = ":101", QT_QPA_PLATFORM = "xcb", CXX_GUI_AUTOCLOSE_MS = "8000" }
+env = { DISPLAY = ":101", QT_QPA_PLATFORM = "xcb", CXX_GUI_AUTOCLOSE_MS = "8000", XDG_RUNTIME_DIR = "build/audit/run", XDG_STATE_HOME = "build/audit/state", XDG_CONFIG_HOME = "build/audit/config", HOME = "build/audit/home" }
 timeout_sec = 120
 warmup_sec = 3
 pre = [
+    "mkdir -p build/audit/run build/audit/state build/audit/config build/audit/home",
     "pkill -f '[b]uild/debug/bin/lifegame' 2>/dev/null || true",
     "pkill -f '[X]vfb :101' 2>/dev/null || true",
     "Xvfb :101 -screen 0 1280x1024x24 >/tmp/lifegame-audit-xvfb.log 2>&1 &",

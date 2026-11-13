@@ -24,10 +24,10 @@
 | Domain 不依赖 Qt | 源码无 `<Q...>` include；`check_layering.py` 拒绝 Domain Qt 头 | 通过 |
 | Shared 只依赖自身 | `src/shared` 无任何层 include；无 Qt | 通过 |
 | Controller 不依赖 App | `grep -rn '#include "app/' src/controller` 无输出 | 通过 |
-| App 不直接命令 Model | `grep -rn 'm_model->' src/app` 无输出；App 只组合/转发 Controller | 通过 |
+| App 只做组合根 | `MainWindow` 包含 Model/View/Service/Controller 用于组合与连接，不直接执行 Model 命令 | 通过 |
 | 测试能脱离 Model 测 View | `view_tests` 只加入 View/Domain 源码；用 `domain::Grid` 构造棋盘 | 通过 |
 | 门禁是否只是“文档 OK” | `layering_selftest` 负向 fixture：View→Model、Service→Model、Shared→Qt、Manifest 分组错位全部失败 | 通过 |
-| 目标图 | `model/service/view → domain/shared`；`controller → 三者`；`app → controller` | 通过 |
+| 目标图 | `model/service/view → domain/shared`；`controller → 三者`；`app` 是唯一组合根 | 通过 |
 
 ## 源码级证据
 
@@ -110,9 +110,9 @@ python3 tools/layering_selftest.py
 8. **热路径统计**：`Grid::computeRows()` 在演化时顺带统计人口和 `changed`；
    `SimulationEngine` 汇总各 chunk 的 `GridStats`；`LifeModel::applyStep()` 不再每代
    额外调用 `Grid::equals()` 和 `Grid::population()`。
-9. **OOM 策略**：`PackedGrid` 使用 `new (std::nothrow)` 分配字存储并提供 `valid()`；
-   `History` 返回放快照失败；Jump 快照失败返回 `OutOfMemory`。大 Grid 和快照路径
-   不再依赖异常。
+9. **OOM 策略**：`PackedGrid` 与部分大 Grid/快照使用 `new (std::nothrow)` 并返回
+   `OutOfMemory`；普通 `std::vector` 分配在 `-fno-exceptions` 下仍会终止进程，
+   文档不声称所有 OOM 都可恢复。
 10. **测试清单**：日志由内嵌 stacklog 自身保证，不单设 `logging_tests`；新增的
     Controller bridge/接口都列入 `LIFEGAME_CONTROLLER_*`，由分层门禁检查。
 

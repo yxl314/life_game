@@ -38,7 +38,7 @@
 - **可运维日志**：内嵌 stacklog 直接写入 2 MiB × 3 份轮转文件，默认 Info，
   `--verbose` 才打开 Debug，`--log-file` 可覆盖路径；不会逐代/逐格刷日志。
 - **单实例**：内嵌 singleproc 用文件锁保证同一用户只运行一个实例；重复启动直接退出。
-- **工程化齐全**：qmake 工程、7 个用例（5 个 QTest + 2 个分层检查）、ASan/UBSan 选项、
+- **工程化齐全**：qmake 工程、7 个用例（4 个 QTest + 1 个纯 C++ 域测试 + 2 个分层检查）、ASan/UBSan 选项、
   `.clang-format`、README 与架构文档。
 
 ## 功能
@@ -187,7 +187,7 @@ life_game.pri                 模块源文件清单与编译选项（各 .pro �
 docs/architecture.md          架构契约与评审清单
 docs/performance.md           数据结构与并发性能报告
 src/domain/                   纯业务 C++，无 Qt（含 1 bit/cell 快照 PackedGrid）
-src/shared/                   跨层只读契约值对象（无 Qt、无行为）
+src/shared/                   跨层只读契约值对象与纯函数（无 Qt）
 src/model/                    可观察 Model + CommandResult + 异步管线
 src/service/                  QSettings / RLE / PNG + FileError/SettingsError
 src/view/                     自绘棋盘、面板、对话框、确认/提示、目录、主题
@@ -224,7 +224,7 @@ tools/layering_selftest.py    门禁负向 fixture
 # 主程序
 mkdir -p build/app && cd build/app
 qmake6 ../../life_game.pro && make -j4
-cd ../.. && ./build/app/lifegame
+cd ../.. && ./build/app/bin/lifegame
 
 # 全部测试（各自构建、各自运行，最后跑两个分层检查）
 ./tests/run_all.sh
@@ -294,7 +294,7 @@ qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
 | `layering` | Python | include 方向、绕过、CJK、源码清单完整性 |
 | `layering_selftest` | Python | 架构门禁自身的负向 fixture |
 
-UI 测试输出 `/tmp/lifegame-ui-tests.png`。界面用例需要离屏平台插件：
+UI 测试输出 `/tmp/lifegame-1500x1000.png`。界面用例需要离屏平台插件：
 `tests/run_all.sh` 统一导出 `QT_QPA_PLATFORM=offscreen`，无需 Xvfb。
 
 ### 质量门禁
@@ -317,23 +317,24 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
 PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml build --kind asan
 
 # cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
-python3 ../cxx_ci/ci/ci.py -c ci.toml
+python3 ../cxx_ci/ci/ci.py ci.toml
 
-# cxx_ci/standardize：主工程 src 的全量 tidy
+# cxx_ci/standardize：主工程 src 的 tidy/format 检查（当前 tidy 开、format 暂关）
 python3 ../cxx_ci/standardize/standardize.py --check
 
-# 一键执行 CI + standardize + audit
+# 一键执行 CI + style + layer + audit
 ./check.sh all
 ```
 
 `standardize` 覆盖主工程 `src`；测试是独立 qmake 工程，不在主工程的
 `compile_commands.json` 中，由 `cxx_ci` 负责构建和运行。禁改区/第三方代码由
-`exclude` 排除，Qt 自身头文件由 `.clang-tidy` 的 `HeaderFilterRegex` 忽略。
+`exclude` 排除；Qt 自身头文件由 `.clang-tidy` 的 `HeaderFilterRegex` 排除在
+项目规则之外，Qt 模板头触发的两条 `portability-*` 告警已在 `Checks` 中关闭。
 
-结果在 `reports/`，CI 完整日志在 `ci-logs/`。当前 PRoot-Distro 环境无法运行
-ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
-默认不把 ASan 运行纳入 `all`，只用 `build --kind asan` 验证构建；普通 Linux
-主机上把 `[asan].enabled` 改回 `true` 即可。
+结果在 `reports/`，CI 完整日志在 `ci-logs/`。GUI 的 ASan 运行依赖图形栈和
+运行时环境，`audit.toml` 默认不把 ASan 运行纳入 `all`，只用
+`build --kind asan` 验证构建；需要完整运行期检查的环境把 `[asan].enabled`
+改回 `true`。
 
 ## 设计细节
 
@@ -365,7 +366,8 @@ ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
   与退出保存；密度、速度、网格、规则、边界、代数、窗口几何都会往返。
 - **错误分层**：Domain 用 `RleError` 枚举；Model 用 `CommandResult`；Service 用
   `FileError`/`SettingsError` 并附可选系统详情；Controller 统一映射为一条中文提示；
-  Model 不产生用户文案。可恢复错误不使用异常；分配失败被视为不可恢复（进程终止）。
+  Model 不产生用户文案。可恢复错误不使用异常；普通 C++ 容器分配失败在 `-fno-exceptions` 下会终止进程；
+  仅显式使用 `std::nothrow` 的快照/大缓冲区路径返回可恢复错误。
 - **日志与单实例**：`main.cpp` 直接调用 stacklog；各层使用
   `STACKLOG_DEBUG/INFO/WARN/ERROR` 记录低频状态迁移与失败，不引入
   `QLoggingCategory`，也不逐代/逐格刷日志。`singleproc::Guard` 在事件循环前取得
@@ -411,8 +413,9 @@ ASan（`sanitizer_allocator_primary64.h` CHECK failed），因此 `audit.toml`
 - 并行计算使用 Qt 全局线程池，若应用其他部分占用大量池线程，模拟会自动排队；
 - 回退范围受快照间隔与 64 张上限约束；
 - 当前只提供中文文案；`tr()` 已就位，但未附带 `.ts` 翻译文件；
-- 文件对话框不记忆上次打开目录；
-- 分配失败/OOM 被视为不可恢复（`-fno-exceptions` 下进程终止），不会弹错误框；
+- 文件对话框会记住本次会话中上次打开的目录；退出后不持久化；
+- 普通容器分配失败在 `-fno-exceptions` 下会终止进程，不会弹错误框；只有
+  `std::nothrow` 的快照/大缓冲区路径能返回 `OutOfMemory`；
 - 未提供 `.desktop`/安装包集成；安装即拷贝 `build/app/bin/lifegame`。
 
 ## 第三方资源

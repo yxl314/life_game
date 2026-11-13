@@ -127,7 +127,7 @@ LIFEGAME_APP_HEADERS = \
 LIFEGAME_APP_SOURCES = \
     $$LIFEGAME_ROOT/src/app/main_window.cpp
 
-# shared：只有头文件的共享类型（CMake 里是 INTERFACE 目标）
+# shared：只有头文件的共享类型与纯函数
 LIFEGAME_SHARED_HEADERS = \
     $$LIFEGAME_ROOT/src/shared/app_settings.h \
     $$LIFEGAME_ROOT/src/shared/jump_info.h \

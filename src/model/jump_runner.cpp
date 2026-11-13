@@ -42,6 +42,7 @@ JumpOutcome runJump(const JumpRequest& request) noexcept
     {
         domain::Grid::computeNext(*current, next.get(), request.rule, request.boundary);
         std::swap(current, next);
+        outcome.generation = generation;
 
         if (request.cancel && request.cancel->load())
         {

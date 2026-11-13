@@ -124,7 +124,7 @@ public:
      * @brief 原地串行演化一代。
      * @param rule 生命类规则。
      * @param boundary 边界策略。
-     * @note 主要用于测试与单步；异步流程走 computeNext()/computeRows()。
+     * @note 主要用于测试；模型与异步流程走 computeNext()/computeRows()。
      */
     void advance(const Rule& rule, Boundary boundary);
 

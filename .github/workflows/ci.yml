@@ -33,7 +33,7 @@ jobs:
 
       - name: Collect UI screenshot
         if: always()
-        run: cp /tmp/lifegame-ui-tests.png build/ui-screenshot.png || true
+        run: cp /tmp/lifegame-1500x1000.png build/ui-screenshot.png || true
 
       - name: Upload UI screenshot
         if: always()

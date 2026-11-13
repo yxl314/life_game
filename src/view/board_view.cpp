@@ -12,8 +12,6 @@
 
 #include "domain/grid.h"
 #include "shared/app_settings.h"
-#include "domain/grid.h"
-#include "shared/app_settings.h"
 
 namespace lifegame::view
 {
@@ -76,22 +74,25 @@ BoardView::BoardView(QWidget* parent)
 
 void BoardView::applyFrame(const BoardFrame& frame)
 {
-    const bool boardChanged = m_board != frame.board;
+    // 模型以值成员持有棋盘，指针通常不变；尺寸变化必须单独比较，否则
+    // resize/load 后不会重置自动适配和缩放平移。
+    const int previousWidth = boardWidth();
+    const int previousHeight = boardHeight();
+    const bool pointerChanged = m_board != frame.board;
+    const int nextWidth = frame.board != nullptr ? frame.board->width() : 0;
+    const int nextHeight = frame.board != nullptr ? frame.board->height() : 0;
+
     m_board = frame.board;
     m_population = std::max(0, frame.population);
     m_animating = frame.running;
-    if (boardChanged)
+    if (pointerChanged || previousWidth != nextWidth || previousHeight != nextHeight)
     {
         m_hover_row = -1;
         m_hover_col = -1;
+        m_auto_fit = true;
         m_cell_pixels = fitCellPixels();
         m_pan = QPointF();
     }
-    update();
-}
-
-void BoardView::refresh()
-{
     update();
 }
 
@@ -105,15 +106,15 @@ QSize BoardView::minimumSizeHint() const
     return QSize(420, 320);
 }
 
-bool BoardView::gridVisible() const
-{
-    return m_grid_visible;
-}
-
 void BoardView::setStampPreview(const QVector<QPoint>& offsets)
 {
     m_preview = offsets;
     update();
+}
+
+bool BoardView::gridVisible() const
+{
+    return m_grid_visible;
 }
 
 void BoardView::setGridVisible(bool visible)
@@ -525,7 +526,9 @@ void BoardView::drawCellsDetailed(QPainter& painter,
     }
 
     if (hoverRow >= range.firstRow && hoverRow <= range.lastRow && hoverCol >= range.firstCol &&
-        hoverCol <= range.lastCol)
+        hoverCol <= range.lastCol &&
+        cells[static_cast<std::size_t>(hoverRow) * static_cast<std::size_t>(width) +
+              static_cast<std::size_t>(hoverCol)] != domain::kDead)
     {
         painter.setBrush(kAliveHover);
         drawCellShape(painter,

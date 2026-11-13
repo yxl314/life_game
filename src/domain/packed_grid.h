@@ -35,13 +35,10 @@ public:
     /// @param other 待拷贝的快照。
     /// @return 本快照。
     PackedGrid& operator=(const PackedGrid& other);
-    /// @brief 接管 `other` 的打包字。
-    /// @param other 待移动的快照。
-    PackedGrid(PackedGrid&&) noexcept = default;
-    /// @brief 接管 `other` 的打包字。
-    /// @param other 待移动的快照。
-    /// @return 本快照。
-    PackedGrid& operator=(PackedGrid&&) noexcept = default;
+    /// @brief 禁止移动：默认移动会留下 wordCount 非零但 words 为空的源对象，
+    /// 之后 unpack() 会解引用空指针。快照通过 shared_ptr 共享，不需要移动。
+    PackedGrid(PackedGrid&&) = delete;
+    PackedGrid& operator=(PackedGrid&&) = delete;
 
     /**
      * @brief 打包一块活动棋盘。
@@ -65,13 +62,6 @@ public:
     int height() const noexcept
     {
         return m_height;
-    }
-
-    /// @brief 查询表示的比特数。
-    /// @return 比特数（width * height）。
-    std::size_t bitSize() const noexcept
-    {
-        return static_cast<std::size_t>(m_width) * static_cast<std::size_t>(m_height);
     }
 
     /// @brief 查询打包存储的大小。

@@ -1,8 +1,8 @@
 # cxx_ci 配置 —— life_game
 #
 # 在仓库根目录运行：
-#     python3 ../cxx_ci/ci/ci.py -c ci.toml
-#     python3 ../cxx_ci/ci/ci.py -c ci.toml --steps clean,configure,build
+#     python3 ../cxx_ci/ci/ci.py ci.toml
+#     python3 ../cxx_ci/ci/ci.py ci.toml --steps clean,configure,build
 #
 # 主程序是一个 qmake 工程；五个测试各自是独立 .pro，由 tests/run_all.sh
 # 逐个 qmake + make 并运行，所以测试阶段使用 custom 命令，而不是 qtest

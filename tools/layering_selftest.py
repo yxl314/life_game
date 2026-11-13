@@ -107,6 +107,16 @@ def main() -> int:
         False,
     )
     ok &= expect(
+        "model QWidget via module path",
+        {"src/model/model.h": "#include <QtWidgets/QWidget>\n"},
+        False,
+    )
+    ok &= expect(
+        "domain non-layer quoted include",
+        {"src/domain/value.h": '#include "stacklog/stacklog.hpp"\n'},
+        False,
+    )
+    ok &= expect(
         "model Chinese literal",
         {"src/model/model.h": 'inline const char* kMsg = "中文说明";\n'},
         False,
@@ -122,6 +132,14 @@ def main() -> int:
         True,
     )
     # The last fixture deliberately lists both files; build a truly unlisted one.
+    root = write_tree({"src/domain/real.h": "#pragma once\n"})
+    (root / "life_game.pri").write_text(
+        "# $$LIFEGAME_ROOT/src/domain/real.h\n", encoding="utf-8")
+    result = run_checker(root)
+    comment_ok = result.returncode == 1
+    print(f"{'PASS' if comment_ok else 'FAIL'} manifest comment is not a listing: exit={result.returncode}")
+    ok &= comment_ok
+
     root = write_tree({"src/domain/listed.h": "#pragma once\n"})
     (root / "src" / "domain" / "unlisted.h").write_text("#pragma once\n", encoding="utf-8")
     result = run_checker(root)
