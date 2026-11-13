@@ -391,6 +391,10 @@ void ModelTests::commandResults()
 
     const auto* glider = lifegame::domain::findBuiltinPattern("glider");
     QVERIFY(glider != nullptr);
+    // 先清空：3x3 图案放在 (0,0) 时只有中心格在盘内，而滑翔机的中心是空格，
+    // 此时"没有任何格子会改变"，返回值是 NoChange 而不是 Clipped——后者意味
+    // 着"放了，但被裁剪"。清空后才有真正会被裁剪的活细胞。
+    QCOMPARE(model.clear(), CommandResult::Success);
     QCOMPARE(model.placePattern(*glider, 0, 0), CommandResult::Clipped);
 
     lifegame::domain::Pattern empty;
