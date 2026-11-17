@@ -217,12 +217,13 @@ FileController::openRle()
 
 ### 错误
 
-- 可恢复错误不使用异常；应用默认以 `-fno-exceptions` 编译。
+- 可恢复错误不使用异常；应用代码不抛/不捕获异常，构建启用异常只是为了内嵌
+  singleproc 的新平台无关核心能编译（其构造函数用 try/catch 保证异常时释放锁）。
 - Domain：`RleError`、`RuleParseError`（值返回 `RuleParseResult`）。
 - Model：`CommandResult`（`Success/Adjusted/Clipped/Busy/.../ComputationFailed`）。
 - Service：`FileError`、`SettingsError`，可附可选系统详情。
 - Controller：`error_text.h` 把错误码映射为一条中文提示；View 不处理技术错误码。
-- 普通容器分配失败在 `-fno-exceptions` 下会终止进程；只有显式使用
+- 普通容器分配失败（`bad_alloc`）会终止进程；只有显式使用
   `new (std::nothrow)` 的路径返回
   `OutOfMemory`。
 

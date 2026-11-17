@@ -111,7 +111,7 @@ python3 tools/layering_selftest.py
    `SimulationEngine` 汇总各 chunk 的 `GridStats`；`LifeModel::applyStep()` 不再每代
    额外调用 `Grid::equals()` 和 `Grid::population()`。
 9. **OOM 策略**：`PackedGrid` 与部分大 Grid/快照使用 `new (std::nothrow)` 并返回
-   `OutOfMemory`；普通 `std::vector` 分配在 `-fno-exceptions` 下仍会终止进程，
+   `OutOfMemory`；普通 `std::vector` 分配失败（`bad_alloc`）仍会终止进程，
    文档不声称所有 OOM 都可恢复。
 10. **测试清单**：日志由内嵌 stacklog 自身保证，不单设 `logging_tests`；新增的
     Controller bridge/接口都列入 `LIFEGAME_CONTROLLER_*`，由分层门禁检查。

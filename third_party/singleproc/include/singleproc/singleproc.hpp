@@ -58,7 +58,7 @@ public:
         AlreadyRunning,
 
         /// @brief key、目录或锁文件不可用。
-        Error
+        Error,
     };
 
     /// @brief 尝试取得 key 对应的独占锁。

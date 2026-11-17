@@ -32,7 +32,7 @@
   `tools/check_layering.py` 逐条核对。
 - **并发与状态机可测试**：单代异步演化封装在 `SimulationEngine`；跳转重放在
   `LifeModel` 的后台任务中完成；快照历史使用 1 bit/cell 压缩；Model/View/Controller 各有 QtTest 覆盖。
-- **错误码而非异常**：应用代码以 `-fno-exceptions` 编译；可恢复失败使用
+- **错误码而非异常**：应用代码不使用异常做错误处理；可恢复失败使用
   `model::CommandResult`、`service::FileError`、`service::SettingsError`、
   `domain::RleError` 等类型化错误码，Controller 负责映射成一条可操作的中文提示。
 - **可运维日志**：内嵌 stacklog 直接写入 2 MiB × 3 份轮转文件，默认 Info，
@@ -267,8 +267,11 @@ qmake6 /path/to/life_game/life_game.pro && make -j4
 
 ### 编译选项
 
-`life_game.pri` 里统一设：`-Wall -Wextra -Wpedantic` 与 `-fno-exceptions`
-（与原来的 `LIFEGAME_NO_EXCEPTIONS=ON` 一致）。要开 ASan/UBSan 时在命令行上加：
+`life_game.pri` 里统一设：`-Wall -Wextra -Wpedantic`。异常处理保持默认启用：
+新版 singleproc 把平台差异收敛到 `platform.hpp` 后，核心在“取锁成功后创建
+门铃”处用 try/catch 保证 `bad_alloc` 时先释放锁再继续传播，`-fno-exceptions`
+下该文件无法编译；应用代码本身不使用异常，stacklog 的异常条件编译会走启用
+分支。要开 ASan/UBSan 时在命令行上加：
 
 ```bash
 qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
@@ -299,8 +302,9 @@ UI 测试输出 `/tmp/lifegame-1500x1000.png`。界面用例需要离屏平台�
 
 ### 质量门禁
 
-- 编译开启 `-Wall -Wextra -Wpedantic`（在 `life_game.pri` 里统一设置）；默认
-  `-fno-exceptions`，异常在编译期被拒绝。要当错误处理就加
+- 编译开启 `-Wall -Wextra -Wpedantic`（在 `life_game.pri` 里统一设置）。异常
+  处理保持启用（内嵌 singleproc 的平台无关核心需要 try/catch 保证异常时先释放
+  锁），但应用代码不使用异常做错误处理。要把告警当错误就加
   `"QMAKE_CXXFLAGS+=-Werror"`。
 - `python3 tools/check_layering.py .` 检查 include 方向、`src/`/`..` 绕过、
   Domain/Shared/Model 的 Qt/中文纯净度、View/Service 的 Model 隔离、以及
@@ -317,10 +321,10 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
 PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml build --kind asan
 
 # cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
-python3 ../cxx_ci/ci/ci.py ci.toml
+python3 ../cxx_ci/check.py ci --root .
 
 # cxx_ci/standardize：主工程 src 的 tidy/format 检查（当前 tidy 开、format 暂关）
-python3 ../cxx_ci/standardize/standardize.py --check
+python3 ../cxx_ci/check.py style --root .
 
 # 一键执行 CI + style + layer + audit
 ./check.sh all
@@ -366,8 +370,9 @@ python3 ../cxx_ci/standardize/standardize.py --check
   与退出保存；密度、速度、网格、规则、边界、代数、窗口几何都会往返。
 - **错误分层**：Domain 用 `RleError` 枚举；Model 用 `CommandResult`；Service 用
   `FileError`/`SettingsError` 并附可选系统详情；Controller 统一映射为一条中文提示；
-  Model 不产生用户文案。可恢复错误不使用异常；普通 C++ 容器分配失败在 `-fno-exceptions` 下会终止进程；
-  仅显式使用 `std::nothrow` 的快照/大缓冲区路径返回可恢复错误。
+  Model 不产生用户文案。可恢复错误不使用异常；普通 C++ 容器分配失败（`bad_alloc`）
+  没有捕获点，最终仍会终止进程；仅显式使用 `std::nothrow` 的快照/大缓冲区路径
+  返回可恢复错误。
 - **日志与单实例**：`main.cpp` 直接调用 stacklog；各层使用
   `STACKLOG_DEBUG/INFO/WARN/ERROR` 记录低频状态迁移与失败，不引入
   `QLoggingCategory`，也不逐代/逐格刷日志。`singleproc::Guard` 在事件循环前取得
@@ -414,7 +419,7 @@ python3 ../cxx_ci/standardize/standardize.py --check
 - 回退范围受快照间隔与 64 张上限约束；
 - 当前只提供中文文案；`tr()` 已就位，但未附带 `.ts` 翻译文件；
 - 文件对话框会记住本次会话中上次打开的目录；退出后不持久化；
-- 普通容器分配失败在 `-fno-exceptions` 下会终止进程，不会弹错误框；只有
+- 普通容器分配失败（`bad_alloc`）会终止进程，不会弹错误框；只有
   `std::nothrow` 的快照/大缓冲区路径能返回 `OutOfMemory`；
 - 未提供 `.desktop`/安装包集成；安装即拷贝 `build/app/bin/lifegame`。
 
@@ -422,7 +427,9 @@ python3 ../cxx_ci/standardize/standardize.py --check
 
 - 工具栏与按钮图标来自 [Lucide](https://lucide.dev)（ISC License），
   许可证见 `resources/icons/LICENSE-lucide.txt`。
-- `third_party/singleproc`、`third_party/stacklog` 是内嵌第三方源码，随主程序一起编译。
+- `third_party/singleproc`、`third_party/stacklog` 是内嵌第三方源码的裁剪副本
+  （singleproc `4521a6b`、stacklog `0189fe3`；只保留 include/src 与平台适配层），
+  随主程序/测试一起编译。
 
 ## 许可
 

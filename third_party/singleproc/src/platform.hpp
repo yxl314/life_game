@@ -76,7 +76,7 @@ enum class LockResult
     AlreadyRunning,
 
     /// @brief 打开锁文件或加锁失败。
-    Error
+    Error,
 };
 
 /// @brief acquire_lock() 的返回值。

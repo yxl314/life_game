@@ -45,11 +45,27 @@ constexpr std::size_t max_wide_path = 260; // MAX_PATH，含结尾 NUL 前的上
 constexpr std::size_t max_pipe_name = 255; // 命名管道名的保守上限
 
 /// @brief 命名管道名的固定前缀（目标字符串统一用 UTF-8 保存）。
-constexpr char pipe_prefix[] = "\\\\.\\pipe\\";
+constexpr char pipe_prefix[] = R"(\\.\pipe\)";
 
 #ifndef PIPE_REJECT_REMOTE_CLIENTS
 #define PIPE_REJECT_REMOTE_CLIENTS 0x00000008
 #endif
+
+/// @brief 获取 C++11 std::basic_string 的可写缓冲区指针。
+///
+/// C++11 的 data() 返回 const 指针，写入 Buffer 只能用 &s[0]；集中在这里，
+/// 避免每个调用点重复抑制同一条检查。
+wchar_t* writable_data(std::wstring& text)
+{
+    // NOLINTNEXTLINE(readability-container-data-pointer): C++11 的 data() 返回 const 指针
+    return &text[0];
+}
+
+char* writable_data(std::string& text)
+{
+    // NOLINTNEXTLINE(readability-container-data-pointer): C++11 的 data() 返回 const 指针
+    return &text[0];
+}
 
 /// 把 UTF-8 字符串转换为 UTF-16；非法序列返回 false。
 bool utf8_to_wide(const std::string& value, std::wstring& wide)
@@ -66,8 +82,12 @@ bool utf8_to_wide(const std::string& value, std::wstring& wide)
         return false;
     }
     std::wstring buffer(static_cast<std::size_t>(length), L'\0');
-    if (::MultiByteToWideChar(
-            CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), &buffer[0], length) != length)
+    if (::MultiByteToWideChar(CP_UTF8,
+                              MB_ERR_INVALID_CHARS,
+                              value.data(),
+                              static_cast<int>(value.size()),
+                              writable_data(buffer),
+                              length) != length)
     {
         return false;
     }
@@ -90,7 +110,8 @@ std::string wide_to_utf8(const std::wstring& wide)
     }
     std::string buffer(static_cast<std::size_t>(length), '\0');
     if (::WideCharToMultiByte(
-            CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), &buffer[0], length, nullptr, nullptr) != length)
+            CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), writable_data(buffer), length, nullptr, nullptr) !=
+        length)
     {
         return {};
     }
@@ -106,7 +127,7 @@ std::string environment_variable(const wchar_t* name)
         return {};
     }
     std::wstring value(static_cast<std::size_t>(length), L'\0');
-    const DWORD written = ::GetEnvironmentVariableW(name, &value[0], length);
+    const DWORD written = ::GetEnvironmentVariableW(name, writable_data(value), length);
     if (written == 0 || written >= length)
     {
         return {};
@@ -255,6 +276,7 @@ int map_path_error(const std::wstring& path, DWORD error)
 std::string query_user_sid_string()
 {
     HANDLE token = nullptr;
+    // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
     if (!::OpenProcessToken(::GetCurrentProcess(), TOKEN_QUERY, &token))
     {
         return {};
@@ -267,6 +289,7 @@ std::string query_user_sid_string()
     if (size >= sizeof(TOKEN_USER))
     {
         std::vector<unsigned char> buffer(size);
+        // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
         if (::GetTokenInformation(token, TokenUser, buffer.data(), size, &size))
         {
             // TOKEN_USER 里有指针成员，按值拷贝到对齐的局部变量，避免对字节缓冲区
@@ -274,6 +297,7 @@ std::string query_user_sid_string()
             TOKEN_USER token_user;
             std::memcpy(&token_user, buffer.data(), sizeof(token_user));
             LPWSTR sid_text = nullptr;
+            // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
             if (::ConvertSidToStringSidW(token_user.User.Sid, &sid_text))
             {
                 const LocalMemoryGuard sid_guard(sid_text);
@@ -291,14 +315,13 @@ std::string load_user_identifier()
     if (identity.empty())
     {
         identity = environment_variable(L"USERNAME");
-        for (std::size_t index = 0; index < identity.size(); ++index)
+        for (char& value : identity)
         {
-            const char value = identity[index];
             const bool alpha = (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
             const bool digit = value >= '0' && value <= '9';
             if (!alpha && !digit && value != '.' && value != '_' && value != '-')
             {
-                identity[index] = '_';
+                value = '_';
             }
         }
     }
@@ -361,6 +384,7 @@ int classify_existing_path(const std::wstring& path)
     BY_HANDLE_FILE_INFORMATION information;
     std::memset(&information, 0, sizeof(information));
     int result = 0;
+    // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
     if (::GetFileInformationByHandle(handle, &information))
     {
         if ((information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
@@ -388,6 +412,7 @@ int validate_lock_file(HANDLE handle)
 
     BY_HANDLE_FILE_INFORMATION information;
     std::memset(&information, 0, sizeof(information));
+    // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
     if (!::GetFileInformationByHandle(handle, &information))
     {
         return map_win32_error(::GetLastError());
@@ -417,6 +442,7 @@ make_user_only_security(const std::string& sid_string, SECURITY_ATTRIBUTES& stor
         return nullptr;
     }
     const std::wstring sddl = L"D:P(A;;GA;;;" + wide_sid + L")";
+    // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
     if (!::ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.c_str(), SDDL_REVISION_1, &descriptor, nullptr))
     {
         descriptor = nullptr;
@@ -473,6 +499,7 @@ bool arm_connect(Doorbell& doorbell)
         doorbell.overlapped.hEvent = doorbell.event;
         (void)::ResetEvent(doorbell.event);
 
+        // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
         if (::ConnectNamedPipe(doorbell.pipe, &doorbell.overlapped))
         {
             doorbell.connected = true;
@@ -512,6 +539,7 @@ void abandon_doorbell(Doorbell& doorbell)
         // 取消后、关闭句柄或复用 OVERLAPPED 之前等该 IO 真正结束，否则内核
         // 可能在之后写已经释放的内存。CancelIoEx 返回 FALSE 且
         // ERROR_NOT_FOUND 表示没有未完成的 IO，无需等待。
+        // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
         if (::CancelIoEx(doorbell.pipe, &doorbell.overlapped))
         {
             DWORD transferred = 0;
@@ -590,6 +618,7 @@ LockAttempt acquire_lock(const std::string& path)
 
     OVERLAPPED overlapped;
     std::memset(&overlapped, 0, sizeof(overlapped));
+    // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
     if (!::LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, MAXDWORD, MAXDWORD, &overlapped))
     {
         const DWORD error = ::GetLastError();
@@ -616,7 +645,8 @@ void release_lock(LockHandle handle)
     {
         return;
     }
-    const HANDLE file = reinterpret_cast<HANDLE>(handle);
+    // NOLINTNEXTLINE(performance-no-int-to-ptr): LockHandle 用 intptr_t 承载 fd/HANDLE，避免平台类型进入跨平台接口
+    auto* const file = reinterpret_cast<HANDLE>(handle);
     // MS 文档建议在关闭前显式解锁：只依赖 CloseHandle 时，系统释放锁的时机
     // 可能滞后（资源紧张时尤其明显）。这里忽略失败：句柄关闭仍会兜底释放。
     OVERLAPPED overlapped;
@@ -656,7 +686,7 @@ Doorbell* start_doorbell(const std::string& target)
     SECURITY_ATTRIBUTES* security =
         make_user_only_security(query_user_sid_string(), security_storage, security_descriptor);
 
-    Doorbell* doorbell = new (std::nothrow) Doorbell();
+    auto* doorbell = new (std::nothrow) Doorbell();
     if (doorbell == nullptr)
     {
         if (security_descriptor != nullptr)
@@ -748,6 +778,7 @@ bool wait_doorbell(Doorbell* doorbell, int timeout_ms)
                 break;
             }
             DWORD transferred = 0;
+            // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
             if (!::GetOverlappedResult(doorbell->pipe, &doorbell->overlapped, &transferred, FALSE))
             {
                 // 无法解释的等待结果：让门铃失效，避免事件一直保持 signaled
@@ -801,6 +832,7 @@ void notify_doorbell(const std::string& target)
         {
             return;
         }
+        // NOLINTNEXTLINE(readability-implicit-bool-conversion): Win32 BOOL(int) 平台惯例直接作条件，显式比较只增噪音
         if (!::WaitNamedPipeW(wide_name.c_str(), static_cast<DWORD>(deadline - now)))
         {
             return;

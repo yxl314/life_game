@@ -6,10 +6,11 @@
 # 测试是独立 qmake 工程，不在主工程的 compile_commands.json 中；这里覆盖
 # 应用 src，测试的构建和运行由 cxx_ci 负责。
 #
-# 在仓库根目录运行：
-#     python3 ../cxx_ci/standardize/standardize.py --check
-#     python3 ../cxx_ci/standardize/standardize.py
-#     python3 ../cxx_ci/standardize/standardize.py --apply
+# 在仓库根目录运行（cxx_ci 的跨平台入口）：
+#     python3 ../cxx_ci/check.py style --root .
+#
+# --apply 等修复动作由 cxx_ci.standardize_tool 提供，需要时可直接调用：
+#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --root . --apply
 [standardize]
 paths = ["src"]
 exclude = ["build", "third_party"]

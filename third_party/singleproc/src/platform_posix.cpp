@@ -1,3 +1,7 @@
+// 本文件只在 POSIX 构建中编译。整文件加平台守卫，Windows 门禁里的 clang-tidy
+// 会把它当成空翻译单元，不会因为找不到 POSIX 头文件误报。
+#ifndef _WIN32
+
 /// @file
 /// @brief Guard 的 POSIX 平台实现：flock 文件锁与 Unix domain socket 门铃。
 
@@ -385,3 +389,5 @@ void* doorbell_native_handle(const Doorbell* doorbell)
 
 } // namespace detail
 } // namespace singleproc
+
+#endif // !defined(_WIN32)

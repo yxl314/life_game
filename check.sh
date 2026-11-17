@@ -1,6 +1,9 @@
 #!/bin/sh
-# 项目检查入口：build/test、格式检查、审计。
+# 项目检查入口：build/test、格式检查、分层检查、审计。
 # 用法：./check.sh [all|ci|style|layer|audit]
+#
+# ci/style 统一走 cxx_ci 的跨平台入口 check.py（主程序与 5 个测试工程由
+# tests/run_all.sh 驱动，配置见 ci.toml）；layer 与 audit 保持项目自己的检查。
 set -u
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
@@ -29,16 +32,15 @@ run() {
 
 case "$STAGE" in
     all)
-        run python3 ../cxx_ci/ci/ci.py --jobs "$JOBS"
-        run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
+        run python3 ../cxx_ci/check.py all --root "$ROOT" --jobs "$JOBS"
         run python3 tools/check_layering.py
         run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
         ;;
     ci)
-        run python3 ../cxx_ci/ci/ci.py --jobs "$JOBS"
+        run python3 ../cxx_ci/check.py ci --root "$ROOT" --jobs "$JOBS"
         ;;
     style)
-        run python3 ../cxx_ci/standardize/standardize.py --check --jobs "$JOBS"
+        run python3 ../cxx_ci/check.py style --root "$ROOT" --jobs "$JOBS"
         ;;
     layer)
         run python3 tools/check_layering.py

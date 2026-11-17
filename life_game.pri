@@ -139,7 +139,8 @@ LIFEGAME_MAIN_SOURCES = \
 
 # 内嵌第三方库：单实例锁与日志。它们不属于 src 分层，只由需要它们的工程加入。
 LIFEGAME_SINGLEPROC_HEADERS = \
-    $$LIFEGAME_ROOT/third_party/singleproc/include/singleproc/singleproc.hpp
+    $$LIFEGAME_ROOT/third_party/singleproc/include/singleproc/singleproc.hpp \
+    $$LIFEGAME_ROOT/third_party/singleproc/src/platform.hpp
 
 # 平台实现二选一：singleproc 0.3.0 起把 flock/Unix socket 与
 # LockFileEx/命名管道拆成两个平台文件，由 qmake 作用域选择，避免把
@@ -153,18 +154,36 @@ unix: LIFEGAME_SINGLEPROC_SOURCES += \
 win32: LIFEGAME_SINGLEPROC_SOURCES += \
     $$LIFEGAME_ROOT/third_party/singleproc/src/platform_win32.cpp
 
+# Windows 平台层用用户 SID / SDDL 安全描述符，需要 advapi32。
+win32: LIBS += -ladvapi32
+
 LIFEGAME_STACKLOG_HEADERS = \
     $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/stacklog.hpp \
-    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/version.hpp
+    $$LIFEGAME_ROOT/third_party/stacklog/include/stacklog/version.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_dirs.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_paths.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_stream.hpp \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_time.hpp
 
 LIFEGAME_STACKLOG_SOURCES = \
     $$LIFEGAME_ROOT/third_party/stacklog/src/stacklog.cpp
 
+unix: LIFEGAME_STACKLOG_SOURCES += \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_posix.cpp
+
+win32: LIFEGAME_STACKLOG_SOURCES += \
+    $$LIFEGAME_ROOT/third_party/stacklog/src/platform_win32.cpp
+
 # 编译选项：-Wall -Wextra -Wpedantic。不再全局 -fno-exceptions：
-# third_party/singleproc 0.3.0 起在"持锁后创建门铃"路径上用 try/catch 保证
+# third_party/singleproc 0.3.0 起在“持锁后创建门铃”路径上用 try/catch 保证
 # 内存分配失败时先释放锁再传播异常（Windows 平台实现尤其需要），
 # -fno-exceptions 会让它编不过；项目自身代码不抛异常，开启异常不影响行为。
 CONFIG += c++17
+# 两个内嵌库都有 platform_posix.cpp / platform_win32.cpp；qmake 默认按源文件
+# 基本名生成对象文件，同名会互相覆盖（链接时缺其中一份平台实现）。启用
+# object_parallel_to_source，让对象文件按源目录分层，避免同名冲突。
+CONFIG += object_parallel_to_source
 QMAKE_CXXFLAGS += -Wall -Wextra -Wpedantic
 
 INCLUDEPATH += \
