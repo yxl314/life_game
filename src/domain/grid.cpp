@@ -173,6 +173,7 @@ void Grid::advance(const Rule& rule, Boundary boundary)
     *this = std::move(next);
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void Grid::randomize(int densityPercent, std::uint32_t seed)
 {
     const int density = std::clamp(densityPercent, 0, 100);
@@ -226,6 +227,7 @@ void Grid::computeRows(const Grid& current,
                        Grid* next,
                        const Rule& rule,
                        Boundary boundary,
+                       // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
                        int rowBegin,
                        int rowEnd,
                        GridStats* stats)

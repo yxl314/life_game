@@ -34,7 +34,7 @@ case "$STAGE" in
     all)
         run python3 ../cxx_ci/check.py all --root "$ROOT" --jobs "$JOBS"
         run python3 tools/check_layering.py
-        run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
+        run env PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --jobs "$JOBS" all
         ;;
     ci)
         run python3 ../cxx_ci/check.py ci --root "$ROOT" --jobs "$JOBS"
@@ -46,7 +46,7 @@ case "$STAGE" in
         run python3 tools/check_layering.py
         ;;
     audit)
-        run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
+        run env PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --jobs "$JOBS" all
         ;;
     *)
         echo "usage: $0 [all|ci|style|layer|audit]" >&2

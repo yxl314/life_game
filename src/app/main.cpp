@@ -117,8 +117,8 @@ int main(int argc, char* argv[])
         }
 
         // 本应用暂未接入门铃；重复启动直接退出，不尝试把已有窗口带到前台。
-        const singleproc::Guard guard("life-game");
-        if (guard.state() == singleproc::Guard::State::Error)
+        const singleproc::guard guard("life-game");
+        if (guard.state() == singleproc::guard::status::error)
         {
             STACKLOG_ERROR() << "single-instance lock failed errno=" << guard.error_code();
             exitCode = 1;

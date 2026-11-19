@@ -61,6 +61,7 @@ public:
      * @param birth 出生掩码（第 0..8 位）。
      * @param survival 存活掩码（第 0..8 位）。
      */
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     constexpr Rule(std::uint16_t birth, std::uint16_t survival) noexcept
         : m_birth(static_cast<std::uint16_t>(birth & 0x01FFu)),
           m_survival(static_cast<std::uint16_t>(survival & 0x01FFu))

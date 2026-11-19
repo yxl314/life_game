@@ -46,6 +46,7 @@ QRectF cellRectAt(const QPointF& topLeft, int row, int col, double cellPixels, d
                   std::max(1.0, cellPixels - gap));
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void drawCellShape(QPainter& painter, const QRectF& rect, double cellPixels, double radius)
 {
     if (cellPixels >= kCellImageThreshold)
@@ -186,6 +187,7 @@ QPointF BoardView::boardTopLeft() const
                    (static_cast<double>(height()) - boardHeightPixels) / 2.0 + m_pan.y());
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool BoardView::cellFromPosition(const QPoint& position, int* row, int* col) const
 {
     const double pixels = cellPixels();
@@ -439,6 +441,7 @@ void BoardView::drawGridLines(QPainter& painter,
 
 void BoardView::drawGridLinesRange(QPainter& painter,
                                    const QRectF& boardRect,
+                                   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
                                    double cellPixelsValue,
                                    int stride,
                                    const VisibleCellRange& range) const

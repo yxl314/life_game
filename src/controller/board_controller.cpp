@@ -160,6 +160,7 @@ void BoardController::onCellDragged(int row, int col)
     m_lastCol = col;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void BoardController::onCellReleased(int row, int col)
 {
     Q_UNUSED(row)

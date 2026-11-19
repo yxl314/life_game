@@ -317,8 +317,10 @@ UI 测试输出 `/tmp/lifegame-1500x1000.png`。界面用例需要离屏平台�
 
 ```bash
 # cxx_audit：clang-tidy + PMD CPD + Valgrind（ASan 视运行环境而定）
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml build --kind asan
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml all
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml build --kind asan
+# 只校验配置与工具前置条件，不构建、不写报告
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --check-config
 
 # cxx_ci：clean -> configure -> build -> 全部测试 + 分层门禁
 python3 ../cxx_ci/check.py ci --root .
@@ -334,6 +336,8 @@ python3 ../cxx_ci/check.py style --root .
 `compile_commands.json` 中，由 `cxx_ci` 负责构建和运行。禁改区/第三方代码由
 `exclude` 排除；Qt 自身头文件由 `.clang-tidy` 的 `HeaderFilterRegex` 排除在
 项目规则之外，Qt 模板头触发的两条 `portability-*` 告警已在 `Checks` 中关闭。
+`cxx_audit` 的 tidy 检查集由 `audit.toml` 的 `[tidy.groups]` 生成，不再读取
+项目 `.clang-tidy`；`.clang-tidy` 只服务 `standardize` 的 tidy/format 流程。
 
 结果在 `reports/`，CI 完整日志在 `ci-logs/`。GUI 的 ASan 运行依赖图形栈和
 运行时环境，`audit.toml` 默认不把 ASan 运行纳入 `all`，只用
@@ -375,7 +379,7 @@ python3 ../cxx_ci/check.py style --root .
   返回可恢复错误。
 - **日志与单实例**：`main.cpp` 直接调用 stacklog；各层使用
   `STACKLOG_DEBUG/INFO/WARN/ERROR` 记录低频状态迁移与失败，不引入
-  `QLoggingCategory`，也不逐代/逐格刷日志。`singleproc::Guard` 在事件循环前取得
+  `QLoggingCategory`，也不逐代/逐格刷日志。`singleproc::guard` 在事件循环前取得
   文件锁，重复启动直接退出，不把旧窗口带到前台。
 
 ## C++17 用法
@@ -428,7 +432,7 @@ python3 ../cxx_ci/check.py style --root .
 - 工具栏与按钮图标来自 [Lucide](https://lucide.dev)（ISC License），
   许可证见 `resources/icons/LICENSE-lucide.txt`。
 - `third_party/singleproc`、`third_party/stacklog` 是内嵌第三方源码的裁剪副本
-  （singleproc `4521a6b`、stacklog `0189fe3`；只保留 include/src 与平台适配层），
+  （singleproc `a7b84ef`、stacklog `8fd01bc`；只保留 include/src 与平台适配层），
   随主程序/测试一起编译。
 
 ## 许可

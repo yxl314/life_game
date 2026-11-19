@@ -5,6 +5,7 @@
 namespace lifegame::controller
 {
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::vector<CellPosition> rasterLine(int fromRow, int fromCol, int toRow, int toCol)
 {
     std::vector<CellPosition> cells;

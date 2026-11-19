@@ -234,7 +234,7 @@ FileController::openRle()
 - 只记录低频状态迁移、文件/设置失败、模拟/跳转生命周期；不记录每代、每帧、每格、
   RLE/棋盘正文或窗口几何全文。
 - Domain 不引入日志；RLE 错误在 Service/Controller 边界记录。
-- `singleproc::Guard("life-game")` 在事件循环前取得文件锁；已有实例时直接退出，
+- `singleproc::guard("life-game")` 在事件循环前取得文件锁；已有实例时直接退出，
   不把旧窗口带到前台。
 
 ### 并发

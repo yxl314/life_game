@@ -172,6 +172,7 @@ std::size_t appendUnsigned(std::string* output, std::size_t value)
     return digits;
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::size_t appendRun(std::string* output, int count, char tag)
 {
     if (count <= 0)

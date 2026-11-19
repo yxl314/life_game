@@ -74,6 +74,7 @@ RleReadResult RleFileService::read(const QString& path) const
     return {decoded.document, FileError::None, {}, {}};
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 FileError RleFileService::write(const QString& path, const QString& text, QString* detail) const
 {
     // QSaveFile writes to a temporary file and commits atomically, so a failed

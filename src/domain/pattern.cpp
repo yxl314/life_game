@@ -6,6 +6,7 @@
 namespace lifegame::domain
 {
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 Pattern::Pattern(std::string id, int width, int height, std::vector<Cell> cells)
     : m_id(std::move(id)), m_width(width), m_height(height), m_cells(std::move(cells))
 {

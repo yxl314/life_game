@@ -2,13 +2,18 @@
 #
 # 用法（在仓库根目录）：
 #     PYTHONPATH=../cxx_audit/src \
-#         python3 -m cpp_audit -c audit.toml all
+#         python3 -m cxx_audit -c audit.toml all
+#
+# 校验配置（不构建、不写报告）：
+#     PYTHONPATH=../cxx_audit/src \
+#         python3 -m cxx_audit -c audit.toml --check-config
 #
 # 单项：
-#     ... cpp_audit -c audit.toml tidy
-#     ... cpp_audit -c audit.toml cpd
-#     ... cpp_audit -c audit.toml asan
-#     ... cpp_audit -c audit.toml valgrind
+#     ... cxx_audit -c audit.toml tidy
+#     ... cxx_audit -c audit.toml cpd
+#     ... cxx_audit -c audit.toml asan
+#     ... cxx_audit -c audit.toml valgrind
+# 安装后也可直接用 cxx-audit 入口替代 python3 -m cxx_audit。
 
 [project]
 name = "life_game"
@@ -30,8 +35,21 @@ rules = []
 
 [tidy]
 enabled = true
-# clang-tidy 检查集由项目根目录 .clang-tidy 提供。
+# 检查项由 cxx_audit 的组开关生成，不再读取项目根的 .clang-tidy；
+# .clang-tidy 只服务 cxx_ci standardize 的 tidy/format 流程。
+# 组内具体检查项由工具维护，升级工具即可获得新检查。
+# bugprone-easily-swappable-parameters 曾在旧 .clang-tidy 里整组关闭，
+# 新工具不提供逐项排除，改为在 12 处语义明确的签名上用 NOLINT 标注。
 fail_on_warnings = true
+
+[tidy.groups]
+null_pointer = true
+uninitialized = true
+memory = true
+lifetime = true
+integer = true
+common_bugs = true
+compiler_warnings = true
 
 [cpd]
 enabled = true
@@ -42,7 +60,7 @@ min_tokens = 50
 
 [asan]
 # GUI 的 ASan 运行依赖图形栈和运行时环境，默认不纳入 all；ASan 构建仍可用：
-#   python3 -m cpp_audit -c audit.toml build --kind asan
+#   python3 -m cxx_audit -c audit.toml build --kind asan
 # 在普通 Linux 主机上把 enabled 改回 true 即可执行完整运行期检查。
 enabled = false
 build_dir = "build/asan"

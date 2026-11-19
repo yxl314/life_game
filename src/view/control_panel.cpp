@@ -30,6 +30,7 @@ namespace lifegame::view
 namespace
 {
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 QWidget* makeStat(const QString& iconPath, const QString& caption, QLabel** value, QWidget* parent)
 {
     auto* container = new QWidget(parent);
