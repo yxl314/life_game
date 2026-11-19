@@ -432,7 +432,7 @@ python3 ../cxx_ci/check.py style --root .
 - 工具栏与按钮图标来自 [Lucide](https://lucide.dev)（ISC License），
   许可证见 `resources/icons/LICENSE-lucide.txt`。
 - `third_party/singleproc`、`third_party/stacklog` 是内嵌第三方源码的裁剪副本
-  （singleproc `a7b84ef`、stacklog `8fd01bc`；只保留 include/src 与平台适配层），
+  （singleproc `867e35d`、stacklog `8fd01bc`；只保留 include/src 与平台适配层），
   随主程序/测试一起编译。
 
 ## 许可
