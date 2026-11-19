@@ -79,7 +79,7 @@ src/app → controller
 ## 复核命令
 
 ```bash
-./tests/run_all.sh
+python3 tests/run_all.py
 python3 tools/check_layering.py .
 python3 tools/layering_selftest.py
 ```

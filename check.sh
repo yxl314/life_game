@@ -3,7 +3,7 @@
 # 用法：./check.sh [all|ci|style|layer|audit]
 #
 # ci/style 统一走 cxx_ci 的跨平台入口 check.py（主程序与 5 个测试工程由
-# tests/run_all.sh 驱动，配置见 ci.toml）；layer 与 audit 保持项目自己的检查。
+# tests/run_all.py 驱动，配置见 ci.toml）；layer 与 audit 保持项目自己的检查。
 set -u
 
 ROOT=$(cd "$(dirname "$0")" && pwd)

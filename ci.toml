@@ -5,7 +5,7 @@
 #     python3 ../cxx_ci/check.py ci --root . --jobs 8
 #
 # 主程序是一个 qmake 工程；五个测试各自是独立 .pro，由 tests/run_all.py
-# （POSIX 上 tests/run_all.sh 是调用它的薄壳）逐个 qmake + make 并运行，
+# 逐个 qmake + make 并运行，
 # 所以测试阶段使用 custom 命令，而不是 qtest 可执行文件列表。
 
 name = "life_game"

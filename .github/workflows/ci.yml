@@ -29,7 +29,7 @@ jobs:
         run: python3 tools/check_layering.py .
 
       - name: Tests
-        run: ./tests/run_all.sh
+        run: python3 tests/run_all.py
 
       - name: Collect UI screenshot
         if: always()
@@ -73,4 +73,4 @@ jobs:
             QMAKE_CXXFLAGS+=-fno-omit-frame-pointer
             QMAKE_CXXFLAGS+=-g
             QMAKE_LFLAGS+=-fsanitize=address,undefined
-        run: ./tests/run_all.sh
+        run: python3 tests/run_all.py

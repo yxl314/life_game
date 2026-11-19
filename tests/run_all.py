@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """构建并运行全部测试 —— 每个测试是独立 qmake 工程，各自 qmake + make。
 
-跨平台版本：原来的 ``tests/run_all.sh`` 依赖 POSIX sh、``make`` 与 shell 的
-单词拆分，在 Windows 上跑不起来；这里用标准库实现同样的步骤，``run_all.sh``
-保留为调用本脚本的薄壳。
+跨平台入口：用标准库实现构建与运行步骤，不依赖 POSIX sh、``make`` 与
+shell 的单词拆分，Linux/macOS/Windows 共用同一份实现。
 
     python3 tests/run_all.py            # 全部
     python3 tests/run_all.py domain     # 只跑名字含 domain 的
@@ -22,7 +21,7 @@ import subprocess
 import sys
 
 
-# 与 run_all.sh 保持一致：界面相关用例需要离屏平台插件（CI 上没有显示器）。
+# 界面相关用例需要离屏平台插件（CI 上没有显示器）。
 CHILD_ENV_OVERRIDE = {"QT_QPA_PLATFORM": "offscreen"}
 
 

@@ -14,7 +14,7 @@ The checker rejects:
   * sources that are not listed in life_game.pri,
   * manifest groups that list a file under the wrong layer.
 
-Run directly or from tests/run_all.sh.
+Run directly or from tests/run_all.py.
 """
 
 from __future__ import annotations

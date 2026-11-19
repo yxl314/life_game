@@ -227,10 +227,10 @@ qmake6 ../../life_game.pro && make -j4
 cd ../.. && ./build/app/bin/lifegame
 
 # 全部测试（各自构建、各自运行，最后跑两个分层检查）
-./tests/run_all.sh
+python3 tests/run_all.py
 
 # 只跑一个
-./tests/run_all.sh domain
+python3 tests/run_all.py domain
 ```
 
 单个测试也可以完全独立地构建：
@@ -242,7 +242,7 @@ QT_QPA_PLATFORM=offscreen ./bin/view_tests
 ```
 
 界面相关用例（`view_tests` / `controller_tests` / `ui_tests`）需要离屏平台插件，
-`tests/run_all.sh` 会统一导出 `QT_QPA_PLATFORM=offscreen`；单独跑时自己带上。
+`tests/run_all.py` 会统一导出 `QT_QPA_PLATFORM=offscreen`；单独跑时自己带上。
 
 ### 一处环境限制：仓库路径含非 ASCII 字符
 
@@ -257,7 +257,7 @@ mkdir -p /tmp/lifegame-build && cd /tmp/lifegame-build
 qmake6 /path/to/life_game/life_game.pro && make -j4
 ```
 
-`tests/run_all.sh` 把产物放在仓库内的 `build/tests/` 下（能正常工作），若在非 ASCII
+`tests/run_all.py` 把产物放在仓库内的 `build/tests/` 下（能正常工作），若在非 ASCII
 路径的仓库里遇到异常，改用上面的方式即可。
 
 ### 为什么是 Qt 6
@@ -281,7 +281,7 @@ qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
 ## 测试
 
 ```bash
-./tests/run_all.sh
+python3 tests/run_all.py
 ```
 
 每个测试是**独立工程**（各自的 `.pro`），脚本逐个 `qmake6` + `make` 并运行，最后
@@ -298,7 +298,7 @@ qmake6 ../../life_game.pro "QMAKE_CXXFLAGS+=-fsanitize=address,undefined" \
 | `layering_selftest` | Python | 架构门禁自身的负向 fixture |
 
 UI 测试输出 `/tmp/lifegame-1500x1000.png`。界面用例需要离屏平台插件：
-`tests/run_all.sh` 统一导出 `QT_QPA_PLATFORM=offscreen`，无需 Xvfb。
+`tests/run_all.py` 统一导出 `QT_QPA_PLATFORM=offscreen`，无需 Xvfb。
 
 ### 质量门禁
 
@@ -310,7 +310,7 @@ UI 测试输出 `/tmp/lifegame-1500x1000.png`。界面用例需要离屏平台�
   Domain/Shared/Model 的 Qt/中文纯净度、View/Service 的 Model 隔离、以及
   `life_game.pri` 的源文件清单是否完整。
 - `tools/layering_selftest.py` 用负向 fixture 验证门禁确实会失败。
-- CI：普通构建 + ASan/UBSan 两个 job，均执行 `tests/run_all.sh`。
+- CI：普通构建 + ASan/UBSan 两个 job，均执行 `tests/run_all.py`。
 - 新增源文件必须显式加入 `life_game.pri`（禁止 glob），并放入正确的层目录。
 
 本仓库还提供两份外部工具配置，报告和日志都已加入 `.gitignore`：

@@ -7,7 +7,7 @@
 #     qmake6 <仓库>/tests/controller_tests.pro && make -j
 #     QT_QPA_PLATFORM=offscreen ./bin/controller_tests
 #
-# 界面相关用例需要离屏平台插件；tests/run_all.sh 会统一导出。
+# 界面相关用例需要离屏平台插件；tests/run_all.py 会统一导出。
 
 QT += testlib core gui widgets concurrent
 

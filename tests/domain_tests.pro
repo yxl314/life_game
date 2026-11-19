@@ -7,7 +7,7 @@
 #     qmake6 <仓库>/tests/domain_tests.pro && make -j
 #     QT_QPA_PLATFORM=offscreen ./bin/domain_tests
 #
-# 界面相关用例需要离屏平台插件；tests/run_all.sh 会统一导出。
+# 界面相关用例需要离屏平台插件；tests/run_all.py 会统一导出。
 
 TEMPLATE = app
 TARGET   = domain_tests
